@@ -2,7 +2,7 @@
 
 #define RECONNECT_THRESHOLD 15
 
-const char* ssid = "Marshall device";
+const char* ssid = "SupahPhone";
 const char* pass = "beepboopbeep";
 int num_dropped_signals = 0;
 long cur_RSSI = 0;
@@ -25,7 +25,7 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  delay(1000);
+  delay(100); // delay
   cur_RSSI = WiFi.RSSI();
   Serial.print("current: ");
   Serial.println(cur_RSSI);
