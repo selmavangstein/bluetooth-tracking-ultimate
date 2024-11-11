@@ -199,7 +199,7 @@ for filename in os.listdir(directory):
     if filename.endswith('.log') or filename.endswith('.txt'):
         filepath = os.path.join(directory, filename)
         cleaned_filename, presses = clean_data(filepath)
-        plot_smoothed_data(cleaned_filename, [100, 200], param='distance', plot=False)
+        plot_smoothed_data(cleaned_filename, [10, 25, 50], param='distance', plot=False)
 
 
 # Example usage
