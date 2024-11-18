@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import csv
 import os
+import json
 
 
 def clean_data(filename:str):
@@ -62,6 +63,27 @@ def clean_data(filename:str):
             c.write(f'{final_timestamps[i]},{float(dist)},{float(rtt)},{float(rssi)}\n')
 
     return f'{filename.replace(".txt", "").replace(".log", "")}_cleaned.csv', presses
+
+
+def clean_new_format_data(filename:str):
+    with open(filename, 'r') as f:
+        data = f.read().splitlines()
+
+    # clear cleaner file
+    with open(f'{filename.replace(".log", "")}_cleaned.csv', 'w') as c:
+        c.write('timestamp,beacon1_dist,beacon2_dist,beacon3_dist\n')
+
+    for l in data:
+        ts = l.split("]")[0].replace("[", "").replace("]", "")
+        d = json.loads(l.split(" ")[1])
+
+        if "beacon1" in d and "beacon2" in d and "beacon3" in d:
+            b1 = d['beacon1'][0]
+            b2 = d['beacon2'][0]
+            b3 = d['beacon3'][0]
+
+            with open(f'{filename.replace(".log", "")}_cleaned.csv', 'a') as c:
+                c.write(f'{ts},{b1},{b2},{b3}\n')
 
 
 def plot_smoothed_data(filename:str, windows:list, param:str='rssi', plot:bool=True):
@@ -193,7 +215,11 @@ def plot_smoothed_data(filename:str, windows:list, param:str='rssi', plot:bool=T
 
 
 
+clean_new_format_data("first_test.log")
 
+
+
+exit()
 directory = '/Users/cullenbaker/comps/bluetooth-tracking-ultimate/makecharts'
 for filename in os.listdir(directory):
     if filename.endswith('.log') or filename.endswith('.txt'):
