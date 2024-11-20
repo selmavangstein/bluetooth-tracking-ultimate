@@ -75,15 +75,19 @@ def clean_new_format_data(filename:str):
 
     for l in data:
         ts = l.split("]")[0].replace("[", "").replace("]", "")
-        d = json.loads(l.split(" ")[1])
+        try:
+            d = json.loads(l.split(" ")[1])
+        except:
+            continue
 
         if "beacon1" in d and "beacon2" in d and "beacon3" in d:
-            b1 = d['beacon1'][0]
-            b2 = d['beacon2'][0]
-            b3 = d['beacon3'][0]
+            if type(d['beacon1']) == list and type(d['beacon2']) == list and type(d['beacon3']) == list:
+                b1 = d['beacon1'][0]
+                b2 = d['beacon2'][0]
+                b3 = d['beacon3'][0]
 
-            with open(f'{filename.replace(".log", "")}_cleaned.csv', 'a') as c:
-                c.write(f'{ts},{b1},{b2},{b3}\n')
+                with open(f'{filename.replace(".log", "")}_cleaned.csv', 'a') as c:
+                    c.write(f'{ts},{b1},{b2},{b3}\n')
 
 
 def plot_smoothed_data(filename:str, windows:list, param:str='rssi', plot:bool=True):

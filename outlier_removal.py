@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import zscore
 from sklearn.linear_model import LinearRegression
+from smoothing import *
 
 window = 10
 window_size = window
@@ -39,6 +40,8 @@ windows = [window]
 smas_rssi, timestamps = plot_smoothed_data(filename + "_cleaned.csv", windows, param='rssi')
 smas_distance, _ = plot_smoothed_data(filename + "_cleaned.csv", windows, param='distance')
 
+
+# only things we need
 df_data['rssi_smooth'] = smas_rssi[0]
 df_data['distance_smooth'] = smas_distance[0]
 

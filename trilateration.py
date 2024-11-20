@@ -43,12 +43,12 @@ def example_usage():
     # Define three beacon positions
     beacons = np.array([
         [0, 0],    # Beacon 1 at origin
-        [10, 0],   # Beacon 2 at (10,0)
-        [0, 10]    # Beacon 3 at (0,10)
+        [30, 0],   # Beacon 2 at (10,0)
+        [15, 26]    # Beacon 3 at (0,10)
     ])
     
     # Define distances from each beacon to the target
-    distances = np.array([5, 7.07, 7.07])
+    distances = np.array([17, 18, 15])
     
     try:
         position = trilaterate(beacons, distances)
