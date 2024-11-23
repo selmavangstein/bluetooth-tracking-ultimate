@@ -88,6 +88,8 @@ def clean_new_format_data(filename:str):
 
                 with open(f'{filename.replace(".log", "")}_cleaned.csv', 'a') as c:
                     c.write(f'{ts},{b1},{b2},{b3}\n')
+    
+    return f'{filename.replace(".log", "")}_cleaned.csv'
 
 
 def plot_smoothed_data(filename:str, windows:list, param:str='rssi', plot:bool=True):
