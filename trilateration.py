@@ -1,6 +1,7 @@
 import numpy as np
 
-def trilaterate(beacons, distances):
+
+def trilaterate_one(beacons, distances):
     """
     Determine the position of a point using trilateration from three known points and their distances.
     
@@ -38,7 +39,48 @@ def trilaterate(beacons, distances):
     
     return position
 
-# Example usage
+
+def trilateration_two(beacon1, S1, beacon2, S2, beacon3, S3):
+    x1, y1 = beacon1
+    x2, y2 = beacon2
+    x3, y3 = beacon3
+
+    a = 2 * (x2 - x1)
+    b = 2 * (y2 - y1)
+    c = 2 * (x3 - x2)
+    d = 2 * (y3 - y2)    
+
+    e = S1**2 - S2**2 - x1**2 + x2**2 - y1**2 + y2**2
+    f = S2**2 - S3**2 - x2**2 + x3**2 - y2**2 + y3**2
+
+    denominator = (a**2 + c**2) * (b**2 + d**2) - (a * b + c * d)**2
+
+    if denominator == 0:
+        raise ValueError("The beacons do not form a valid triangle for trilateration.")
+
+    
+    x = ((b**2 + d**2) * (a * e + c * f) - (a * b + c * d) * (b * e + d * f)) / denominator
+    y = ((a**2 + c**2) * (b * e + d * f) - (a * b + c * d) * (a * e + c * f)) / denominator
+
+    return (x, y)
+
+
+# Example Usage for two
+# beacon1 = (0, 0)
+# beacon2 = (30, 0)
+# beacon3 = (15, 26) 
+# S1 = 17
+# S2 = 18
+# S3 = 15
+
+# player_location = trilateration(beacon1, S1, beacon2, S2, beacon3, S3)
+
+# print("Player's location:", player_location)
+
+
+
+
+# Example usage (one)
 def example_usage():
     # Define three beacon positions
     beacons = np.array([
