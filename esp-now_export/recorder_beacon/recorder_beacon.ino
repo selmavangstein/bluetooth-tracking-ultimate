@@ -18,10 +18,13 @@ Message myData;
 
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) {
-  memcpy(&myData, incomingData, sizeof(myData));
+  memcpy(&myData, incomingData, sizeof(myData));// Update the structures with the new incoming data
 
-  // Update the structures with the new incoming data
-  Serial.printf("b1:%d b2:%d b3:%d",myData.CollectedBeaconData[0].FTMdist,myData.CollectedBeaconData[1].FTMdist,myData.CollectedBeaconData[2].FTMdist);
+  
+  Serial.printf("b1:{d1:%d,ax:%d,ay:%d,az:%d} b2:{d1:%d,ax:%d,ay:%d,az:%d} b3:{d1:%d,ax:%d,ay:%d,az:%d}",
+                myData.CollectedBeaconData[0].FTMdist,myData.CollectedBeaconData[0].xaccel,myData.CollectedBeaconData[0].yaccel,myData.CollectedBeaconData[0].zaccel,
+                myData.CollectedBeaconData[1].FTMdist,myData.CollectedBeaconData[1].xaccel,myData.CollectedBeaconData[1].yaccel,myData.CollectedBeaconData[1].zaccel,
+                myData.CollectedBeaconData[2].FTMdist,myData.CollectedBeaconData[2].xaccel,myData.CollectedBeaconData[2].yaccel,myData.CollectedBeaconData[2].zaccel);
   Serial.println();
 }
  

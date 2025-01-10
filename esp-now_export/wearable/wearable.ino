@@ -13,8 +13,7 @@
 #include <Adafruit_ADXL345_U.h>
 #include "dataStructures.h"
 
-Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
-
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345); // ensure board target is set to xiao_esp32s3, or else the I2C pins may be incorrect
 /*
  *   THIS FEATURE IS SUPPORTED ONLY BY ESP32-S2 AND ESP32-C3
  */
@@ -121,13 +120,18 @@ void setup() {
 
 void loop() {
     for (int i = 0; i < numBeacons; i++) {
-        startConnectTime = millis();
+        delay(100);
         sensors_event_t event; 
         accel.getEvent(&event);
+        startConnectTime = millis();
         // TODO: add method that sets all curValues to default, then call it here. This way, failed readings can be deciphered.
-        curValues.xaccel = (int16_t) event.acceleration.x;
-        curValues.yaccel = (int16_t) event.acceleration.y;
-        curValues.zaccel = (int16_t) event.acceleration.z;
+        curValues.xaccel = (int16_t) (event.acceleration.x * 100);
+        curValues.yaccel = (int16_t) (event.acceleration.y * 100);
+        curValues.zaccel = (int16_t) (event.acceleration.z * 100);
+        // Serial.println(curValues.xaccel); //debug
+        // Serial.println(curValues.yaccel);
+        // Serial.println(curValues.zaccel);
+        
         WiFi.begin(beacons[i], NULL);
         while ((WiFi.status() != WL_CONNECTED) && (millis() - startConnectTime) < connectTimeOut) {
             delay(10);
@@ -141,7 +145,6 @@ void loop() {
             curMessage.CollectedBeaconData[i].xaccel = curValues.xaccel;
             curMessage.CollectedBeaconData[i].yaccel = curValues.yaccel;
             curMessage.CollectedBeaconData[i].zaccel = curValues.zaccel;
-            // curMessage.bundles[i].rssi = curValues.rssi;
 
 
 
