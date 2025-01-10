@@ -21,7 +21,7 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
   memcpy(&myData, incomingData, sizeof(myData));
 
   // Update the structures with the new incoming data
-  Serial.printf("ts:%lu b1:%d b2:%d b3:%d", myData.timestamp,myData.bundles[0].FTMdist,myData.bundles[1].FTMdist,myData.bundles[2].FTMdist);
+  Serial.printf("b1:%d b2:%d b3:%d",myData.CollectedBeaconData[0].FTMdist,myData.CollectedBeaconData[1].FTMdist,myData.CollectedBeaconData[2].FTMdist);
   Serial.println();
 }
  

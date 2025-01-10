@@ -39,7 +39,7 @@ bool ftmSuccess = true;
 unsigned long startConnectTime;
 int connectTimeOut = 150;  //time in ms that we will try connecting for.
 
-DataBundle curValues;
+BeaconData curValues;
 Message curMessage;
 
 uint8_t broadcastAddress[] = {0x84, 0xFC, 0xE6, 0x7B, 0xC7, 0xd0};
@@ -63,7 +63,7 @@ void onFtmReport(arduino_event_t *event) {
         // The estimated distance in meters may vary depending on some factors (see README file)
         // Serial.printf("[%.2f,%lu,%d]", (float)report->dist_est / 100.0, report->rtt_est,WiFi.RSSI());
         curValues.FTMdist = (u_int16_t) report->dist_est;
-        curValues.rssi = WiFi.RSSI();
+        // curValues.rssi = WiFi.RSSI();
         // Pointer to FTM Report with multiple entries, should be freed after use
         free(report->ftm_report_data);
         WiFi.disconnect();  //might be evil!!!
@@ -120,13 +120,14 @@ void setup() {
 }
 
 void loop() {
-    // Serial.print("{");
     for (int i = 0; i < numBeacons; i++) {
         startConnectTime = millis();
-        // if (i != 0) {
-        //     Serial.print(",");
-        // }
-        // Serial.printf("\"%s\":", beacons[i]);
+        sensors_event_t event; 
+        accel.getEvent(&event);
+        // TODO: add method that sets all curValues to default, then call it here. This way, failed readings can be deciphered.
+        curValues.xaccel = (int16_t) event.acceleration.x;
+        curValues.yaccel = (int16_t) event.acceleration.y;
+        curValues.zaccel = (int16_t) event.acceleration.z;
         WiFi.begin(beacons[i], NULL);
         while ((WiFi.status() != WL_CONNECTED) && (millis() - startConnectTime) < connectTimeOut) {
             delay(10);
@@ -136,8 +137,13 @@ void loop() {
             // curValues.timestamp = millis();
             
             //Now, we update our message. Specifically, we update the data corresponding to the beacon.
-            curMessage.bundles[i].FTMdist = curValues.FTMdist;
-            curMessage.bundles[i].rssi = curValues.rssi;
+            curMessage.CollectedBeaconData[i].FTMdist = curValues.FTMdist;
+            curMessage.CollectedBeaconData[i].xaccel = curValues.xaccel;
+            curMessage.CollectedBeaconData[i].yaccel = curValues.yaccel;
+            curMessage.CollectedBeaconData[i].zaccel = curValues.zaccel;
+            // curMessage.bundles[i].rssi = curValues.rssi;
+
+
 
             // Serial.printf("%d",curValues.FTMdist);
             WiFi.disconnect();
@@ -146,24 +152,7 @@ void loop() {
             // Serial.print("\"conERR\"");
         }
     }
-    sensors_event_t event; 
-    accel.getEvent(&event);
-    curMessage.xaccel = (int) event.acceleration.x;
-    curMessage.yaccel = (int) event.acceleration.y;
-    curMessage.zaccel = (int) event.acceleration.z;
-    curMessage.timestamp = millis();
-    // Serial.print("x:"); Serial.print(event.acceleration.x); Serial.print(",");
-    // Serial.print("y:"); Serial.print(event.acceleration.y); Serial.print(",");
-    // Serial.print("z:"); Serial.print(event.acceleration.z);
-
-    // Serial.print("}");
-    // Serial.println();
+    // sending our message to the recorder beacon via espnow
     esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &curMessage, sizeof(curMessage));
-   
-    // if (result == ESP_OK) {
-    //   Serial.println("Sent with success");
-    // }
-    // else {
-    //   Serial.println("Error sending the data");
-    // }
+
 }
