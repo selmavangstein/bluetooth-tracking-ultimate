@@ -4,10 +4,19 @@ import scipy
 import pandas as pd
 import matplotlib.pyplot as plt
 
-f = KalmanFilter(dim_x=2, dim_z=1) #we track distance from beacon, and also velocity (to predict next position)
+'''
+This is some initial testing of the Kalman filter
+It seems a little hard to get the matrices right
+To understand it, I am considering implementing my own (simplified?) version
+Then we can take accelleration data into account as well.
+'''
+
+
+
+f = KalmanFilter(dim_x=1, dim_z=1) #we track distance from beacon, and also velocity (to predict next position)
 
 #initial state
-f.x = np.array([2., 0.]) #[position, velocity]
+f.x = 0 #[position, velocity]
 
 #we now set a bunch of matrices. Need to figure out how to calibrate the matrices
 
@@ -18,11 +27,12 @@ f.F = np.array([[1.,1.],
 #measurement fcn
 f.H = np.array([[1.,0.]])
 
-#covariance matrix
+#covariance matrix (estimate uncertainty extrapolation equation from tutorial)
 f.P = np.array([[1000.,    0.],
                 [   0., 1000.] ]) #uncertainty is 1000..?
 
-#measurement noise
+#measurement noise/error/uncertainty - we need to calculate this one. Could use the 1m RSSI tests to estimate it..?
+#is one standard deviation of the measurements
 f.R = 5
 
 #process noise
