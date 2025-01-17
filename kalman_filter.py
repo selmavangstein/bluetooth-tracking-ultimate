@@ -64,10 +64,7 @@ zs = df_data["distance"]
 
 s = run(x, P, R, Q, dt=dt, zs=zs, make_plot=True)
 
-""" ps = xs[:, 0]
-count = len(ps)
-plt.figure()
-plt.plot(range(count), zs)
-plt.plot(range(count), ps)
-plt.title("pos vs time")
-plt.show() """
+#we can also replace the whole run thing we can use batch_filter to run it on a dataset we already have
+
+#we already have set a P matrix. Then we can just do
+f = pos_vel_filter(x=(0.,0.), )
