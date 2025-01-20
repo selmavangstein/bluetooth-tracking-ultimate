@@ -38,7 +38,7 @@ def plot_results(ps, zs, cov, actual=None, std_scale=1,
     )
 
     # Save combined plot
-    output_file = os.path.join(output_folder, "combined_plot.png")
+    output_file = os.path.join(output_folder, "combined_plot_acc.png")
     fig.savefig(output_file)
     print(f"Saved combined plot to: {output_file}")
     plt.close(fig)
@@ -46,7 +46,7 @@ def plot_results(ps, zs, cov, actual=None, std_scale=1,
     # Create and save covariance plots
     if plot_P:
         fig = plot_covariance_fig(cov)
-        output_file = os.path.join(output_folder, "covariance_plots.png")
+        output_file = os.path.join(output_folder, "covariance_plots_acc.png")
         fig.savefig(output_file)
         print(f"Saved covariance plots to: {output_file}")
         plt.close(fig)
