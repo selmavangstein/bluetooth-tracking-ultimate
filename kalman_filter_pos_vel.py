@@ -60,10 +60,10 @@ def kalman_filter(zs, times):
     dt = average_difference
     #Use initial measurement to set x0. Can take x1-x0=v0
     x = np.array([zs[0], 0]) #initial state.
-    P = np.diag([1., 9.]) #initial state uncertainty 
+    P = np.diag([5., 9.]) #initial state uncertainty 
     #(velocity p should be max 9. If we make sure they are held still for a few seconds at initialization, we can lower it to like 1)
     Q = Q_discrete_white_noise(dim=2, dt=dt, var=2.35) #process noise
-    R = np.array([[10000.]]) #measurement covariance matrix /sensor variance.
+    R = np.array([[10.]]) #measurement covariance matrix /sensor variance.
 
     #df_data = pd.read_csv("bluetooth-tracking-ultimate\makecharts\walking test to 60_cleaned.csv")
     #zs = df_data["distance"]
@@ -80,4 +80,6 @@ def kalman_filter(zs, times):
     #plot xs
     s.to_array()
     #plot_results(s.x[:, 0], s.z, s.P)
+
+    #this returns a saver object with all the information about the filter
     return s, smooth_xs

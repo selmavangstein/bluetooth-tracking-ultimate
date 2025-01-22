@@ -6,10 +6,38 @@ from matplotlib.patches import Circle
 import numpy as np
 import os
 
+def new_plotter(s, truth):
+    saved_states = s.x
+    measurements = s.z
+    estimated_positions = [state[0] for state in saved_states]  # Assuming position is the first state
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(truth, label='True Positions', linestyle='--')
+    plt.plot(measurements, label='Measurements', marker='o', alpha=0.6)
+    plt.plot(estimated_positions, label='Kalman Filter Estimate', linewidth=2)
+    plt.xlabel('Time Step')
+    plt.ylabel('Position')
+    plt.title('Kalman Filter Tracking')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+    residuals = [measurement - estimate for measurement, estimate in zip(measurements, estimated_positions)]
+    plt.figure(figsize=(10, 6))
+    plt.plot(residuals, label='Residuals', marker='o')
+    plt.axhline(0, color='red', linestyle='--')
+    plt.xlabel('Time Step')
+    plt.ylabel('Residual')
+    plt.title('Residuals of Kalman Filter')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+
 def plot_results(ps, zs, cov, actual=None, std_scale=1,
                  plot_P=True, y_lim=None, 
                  xlabel='time', ylabel='position',
-                 title='Kalman Filter'):
+                 title='Kalman Filter', figname='kalmanplot'):
     """
     Combines measurements and filter plots into a single figure 
     and saves covariance plots as a separate figure.
@@ -38,7 +66,7 @@ def plot_results(ps, zs, cov, actual=None, std_scale=1,
     )
 
     # Save combined plot
-    output_file = os.path.join(output_folder, "combined_plot_acc.png")
+    output_file = os.path.join(output_folder, figname +"_results.png")
     fig.savefig(output_file)
     print(f"Saved combined plot to: {output_file}")
     plt.close(fig)
@@ -46,7 +74,7 @@ def plot_results(ps, zs, cov, actual=None, std_scale=1,
     # Create and save covariance plots
     if plot_P:
         fig = plot_covariance_fig(cov)
-        output_file = os.path.join(output_folder, "covariance_plots_acc.png")
+        output_file = os.path.join(output_folder, figname +"_covariance.png")
         fig.savefig(output_file)
         print(f"Saved covariance plots to: {output_file}")
         plt.close(fig)
@@ -59,7 +87,6 @@ def plot_combined_measurements_and_filter(xs, zs, ps, cov, std_scale=1,
     Creates a combined plot with measurements, filter results, and optional variance shading.
     """
     fig, ax = plt.subplots(figsize=figsize)
-
     # Plot measurements
     plot_measurements(xs, zs, ax=ax, label='Measurements', color='k', lines=True)
 

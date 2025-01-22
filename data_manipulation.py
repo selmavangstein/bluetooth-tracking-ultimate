@@ -44,6 +44,11 @@ measurement_times_numeric = (measurement_times - pd.Timestamp("1970-01-01")) // 
 # Interpolate true positions to match the measurement times
 interpolated_positions = np.interp(measurement_times_numeric, true_times_numeric, true_positions)
 
+if len(interpolated_positions) == len(measurements):
+    df["groundtruth"] = interpolated_positions
+else:
+    print('lengths dont match')
+
 # Now calculate residuals (measurements - interpolated true positions)
 residuals = measurements - interpolated_positions
 
