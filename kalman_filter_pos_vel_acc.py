@@ -34,7 +34,7 @@ def pos_vel_acc_filter(x, P, R, Q=0., dt=1.):
         kf.Q[:] = Q
     return kf
 
-def kalman_filter(pos_data, acc_data, times):
+def kalman_filter(pos_data, acc_data, times, smoothing=True):
     time_differences = times.diff()
     average_difference = time_differences.dt.total_seconds().mean()
 
@@ -63,7 +63,9 @@ def kalman_filter(pos_data, acc_data, times):
     f = pos_vel_acc_filter(x, P, R, Q, dt)
     s = Saver(f)
     xs, covs, _, _ = f.batch_filter(zs, saver=s)
-    smooth_xs, ps, _, _ = f.rts_smoother(xs, covs)
+    smooth_xs = None
+    if smoothing:
+        smooth_xs, ps, _, _ = f.rts_smoother(xs, covs)
     #plot xs
     s.to_array()
     #plot_results(s.x[:, 0], s.z, s.P) #z is measurement, x is filtered value, P is variance

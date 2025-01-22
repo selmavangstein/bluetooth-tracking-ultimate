@@ -51,7 +51,7 @@ def run(x0=(0.,0.), P=500, R=0, Q=0, dt=1.0, zs=None, make_plot=False, actual=No
         plot_results(s.x[:, 0], s.z, s.P)
     return s
 
-def kalman_filter(zs, times):
+def kalman_filter(zs, times, smoothing=True):
     '''Takes measurements and timestamps (must be on datetime format). Returns filtered data'''
 
     time_differences = times.diff()
@@ -76,7 +76,9 @@ def kalman_filter(zs, times):
     f = pos_vel_filter(x, P, R, Q, dt)
     s = Saver(f)
     xs, covs, _, _ = f.batch_filter(zs, saver=s)
-    smooth_xs, ps, _, _ = f.rts_smoother(xs, covs) #figure a way to add to saver
+    smooth_xs = None
+    if smoothing:
+        smooth_xs, ps, _, _ = f.rts_smoother(xs, covs) #figure a way to add to saver
     #plot xs
     s.to_array()
     #plot_results(s.x[:, 0], s.z, s.P)
