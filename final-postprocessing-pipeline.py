@@ -172,7 +172,7 @@ def processData():
     tests = [("EMA", smoothData)]
 
     # Load initial DF
-    initalDf = loadData("playercsvs/4beaconv1.csv")
+    initalDf = loadData("4beaconv1.csv")
     dfs = [initalDf]
 
     # Run Tests on DF
