@@ -169,7 +169,7 @@ def processData():
     # ("Kalman Filter", kalmanFilter)
     # ("Outlier Removal", removeOutliers)
     # ("Plot", plotPlayers)
-    tests = [("EMA", smoothData)]
+    tests = [("Outlier Removal", removeOutliers), ("Kalman Filter", kalmanFilter), ("EMA", smoothData)]
 
     # Load initial DF
     initalDf = loadData("4beaconv1.csv")
@@ -278,7 +278,7 @@ def main():
     dfs = processData()
 
     # Plot the final DFs
-    beaconPositions = np.array([[20, 0], [0, 0], [20, 40]])
+    beaconPositions = np.array([[20, 0], [0, 0], [0, 40]])
     for d in dfs:
         plotPlayers(d, beaconPositions)
 
