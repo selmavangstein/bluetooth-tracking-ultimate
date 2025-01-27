@@ -9,6 +9,8 @@ Lets keep that naming convention for the beacon data columns so we can add as ma
 Uses a pandas df to store the data, and a matplotlib animation to animate the data
 """
 
+
+
 import pandas as pd
 import numpy as np
 import pandas as pd
@@ -21,7 +23,7 @@ import numpy as np
 from filterpy.kalman import update
 from filterpy.kalman import predict
 from filterpy.kalman import KalmanFilter
-
+import os
 import matplotlib.pyplot as plt
 
 def loadData(filename):
@@ -163,7 +165,7 @@ def kalmanFilter(df, x=np.array([10.0, 0]), P=np.diag([30, 16]), R=np.array([[5.
 
     return df
 
-def processData():
+def processData(filename):
     # Submit the tests we want to run on our data in order [("testName", testFunction)]
     # ("EMA", smoothData)
     # ("Kalman Filter", kalmanFilter)
@@ -172,7 +174,7 @@ def processData():
     tests = [("Outlier Removal", removeOutliers), ("Kalman Filter", kalmanFilter), ("EMA", smoothData)]
 
     # Load initial DF
-    initalDf = loadData("4beaconv1.csv")
+    initalDf = loadData(os.path.join(os.getcwd(), filename))
     dfs = [initalDf]
 
     # Run Tests on DF
@@ -187,6 +189,7 @@ def processData():
 
     # Save all the DFS
     final = []
+    final.append(("Initial", initalDf))
     i = 0
     for d in dfs[1:]:
         final.append((tests[i][0] + str(i), d))
@@ -195,7 +198,35 @@ def processData():
     # Return a list of all the dataframes we created, final df is [-1]
     return final
 
-def plotPlayers(data, beacons):
+def plot1d(dfs, plot=False):
+    """
+    Plots 1d charts of each beacon at each step in the ppp
+    """
+    # create charts dictionary so we can show change over time
+    charts_history = {}
+
+    for title, df in dfs:
+        # add columns to history
+        for column in df.columns:
+            if column.startswith('b'):
+                if column not in charts_history:
+                    charts_history[column] = {}
+                charts_history[column][title] = df[column].values
+
+    # Plot the history of each beacon's distance
+    for beacon in charts_history:
+        plt.figure(figsize=(10, 6))
+        for title, data in charts_history[beacon].items():
+            plt.plot(data, label=title)
+        plt.xlabel('Time')
+        plt.ylabel('Distance')
+        plt.title(f'{beacon} Distance Over Time')
+        plt.legend()
+        plt.grid()
+        plt.savefig(os.path.join(os.getcwd(), f'charts/{beacon}_distance.png'))
+        if plot: plt.show()
+
+def plotPlayers(data, beacons, plot=False):
     """
     Plots the players' movements and 1d charts of the players' distances from each beacon, saves all plots to /charts
     """
@@ -243,6 +274,9 @@ def plotPlayers(data, beacons):
         
         return position
 
+    def calulate_avg_position():
+        pass
+    
     # Calculate player positions using trilateration
     player_positions = []
 
@@ -268,14 +302,18 @@ def plotPlayers(data, beacons):
     plt.title(f'Player Movement Path | {title}')
     plt.legend()
     plt.grid()
-    # plt.savefig('/charts/player_movement.png')
-    plt.show()
+    plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_path.png'))
+    if plot: plt.show()
 
 
 
 def main():
     # Process the data
-    dfs = processData()
+    csv_filename = "4beaconv1.csv"
+    dfs = processData(csv_filename)
+
+    # Plot the 1d charts
+    plot1d(dfs)
 
     # Plot the final DFs
     beaconPositions = np.array([[20, 0], [0, 0], [0, 40]])
