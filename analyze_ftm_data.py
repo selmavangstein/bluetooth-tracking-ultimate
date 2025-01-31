@@ -3,9 +3,10 @@
 import re
 import pandas as pd
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 
-def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame):
+def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, title=""):
     """
     Analyzes measured vs. ground truth data when:
       - df_meas is in centimeters, so we scale by /100
@@ -119,7 +120,8 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame):
 
     axes[-1].set_xlabel("Time")
     plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_gt.png'))
+    if plot: plt.show()
 
     # 6) Save
     df_merged.to_csv("merged_results.csv", index=False)

@@ -9,7 +9,7 @@ Lets keep that naming convention for the beacon data columns so we can add as ma
 Uses a pandas df to store the data, and a matplotlib animation to animate the data
 """
 
-
+from analyze_ftm_data import analyze_ftm_data
 
 import pandas as pd
 import numpy as np
@@ -98,6 +98,7 @@ def removeOutliers(df, window_size=10, residual_variance_threshold=1.5):
 
     return df
 
+# need to replace with the actual kalman in Final-kalman
 def kalmanFilter(df, x=np.array([10.0, 0]), P=np.diag([30, 16]), R=np.array([[5.]]), Q=Q_discrete_white_noise(dim=2, dt=0.3, var=2.35), dt=0.3):
     """
     Applies the Kalman filter to every column in the dataframe that starts with 'b'.
@@ -198,7 +199,7 @@ def processData(filename):
     # Return a list of all the dataframes we created, final df is [-1]
     return final
 
-def plot1d(dfs, plot=False):
+def plot1d(dfs, plot=True):
     """
     Plots 1d charts of each beacon at each step in the ppp
     """
@@ -226,7 +227,7 @@ def plot1d(dfs, plot=False):
         plt.savefig(os.path.join(os.getcwd(), f'charts/{beacon}_distance.png'))
         if plot: plt.show()
 
-def plotPlayers(data, beacons, plot=False):
+def plotPlayers(data, beacons, plot=True):
     """
     Plots the players' movements and 1d charts of the players' distances from each beacon, saves all plots to /charts
     """
@@ -278,6 +279,9 @@ def plotPlayers(data, beacons, plot=False):
         pass
     
     # Calculate player positions using trilateration
+    # calculate the players positions based on the best trilateration data (three circle selma example, closest three circles)
+    # calc based on averages of all combinations of 3 beacons
+    # calc based on most likely next position based on acc data
     player_positions = []
 
     for index, row in df.iterrows():
@@ -313,7 +317,14 @@ def main():
     dfs = processData(csv_filename)
 
     # Plot the 1d charts
-    plot1d(dfs)
+    plot1d(dfs, plot=False)
+
+    # Compare to GT Data
+    # Load initial DF
+    gt = loadData("GroundyTruthy.csv")
+    # gt = pd.DataFrame("GroundyTruthy.csv")
+    for df in dfs:
+        analyze_ftm_data(df[1], gt, title=df[0])
 
     # Plot the final DFs
     beaconPositions = np.array([[20, 0], [0, 0], [0, 40]])
