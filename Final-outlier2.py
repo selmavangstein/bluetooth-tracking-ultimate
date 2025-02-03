@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 import numpy as np
 
-def removeOutliers(window_size=20, residual_variance_threshold = 1.5):
+def removeOutliers(window_size=20, residual_variance_threshold=1.5):
     """
     Reads the ground-truth and beacon CSV files, computes/residual variance
     in a rolling window, detects obstacles (outliers), replaces them with 
@@ -72,7 +72,8 @@ def removeOutliers(window_size=20, residual_variance_threshold = 1.5):
     ground_truth = np.interp(df['realtimestamp'].astype(np.int64),groundtruth['timestamp'].astype(np.int64),true_dist * 100)
     df['obstacle_detected'] = detect_obstacles(pos_data, residual_variance_threshold, window_size)
 
-    adjusted_pos_data = pos_data.copy().astype(float)
+    adjusted_pos_data = pos_data.copy()
+    adjusted_pos_data = pos_data.copy().astype(float) # Needs to be float64
 
     # Replace detected outliers within a sliding window
     for i in range(len(pos_data) - window_size + 1):
@@ -82,8 +83,8 @@ def removeOutliers(window_size=20, residual_variance_threshold = 1.5):
             window_slice = pos_data.iloc[start_index:end_index].values
             replacement_values = replace_with_fit(window_slice)
             for j in range(start_index, end_index):
-                j_local = j - start_index
-                adjusted_pos_data.iloc[j] = max(min(replacement_values[j_local], pos_data.iloc[j]),ground_truth[j])
+                curr_window_index = j - start_index
+                adjusted_pos_data.iloc[j] = max(min(replacement_values[curr_window_index], pos_data.iloc[j]), ground_truth[j])
 
     # Probably can get rid of this 
     plt.figure()
