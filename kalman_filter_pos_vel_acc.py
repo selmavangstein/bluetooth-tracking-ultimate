@@ -52,20 +52,12 @@ def kalman_filter(pos_data, acc_data, times, smoothing=True):
 
     zs = list(zip(pos_data, acc_data))
 
-    '''
-    FOR WHOEVER IS IMPLEMENTING THIS AS A PART OF A PIPELINE
-    Here, acc_data is the acceleration in the direction of the relevant beacon. So make sure that 
-    the acceleration preprocessing is ran first. Then probably alter this to be a function where we can
-    input which file and beacon we want to run it on.
-    The final "zs" variable needs to be on the form ((x1,a1), (x2,a2), ...), so keep that in mind if you're changing code
-    '''
-
     f = pos_vel_acc_filter(x, P, R, Q, dt)
     s = Saver(f)
     xs, covs, _, _ = f.batch_filter(zs, saver=s)
     smooth_xs = None
     if smoothing:
-        smooth_xs, ps, _, _ = f.rts_smoother(xs, covs)
+        smooth_xs, smooth_cov, _, _ = f.rts_smoother(xs, covs)
     #plot xs
     s.to_array()
     #plot_results(s.x[:, 0], s.z, s.P) #z is measurement, x is filtered value, P is variance
