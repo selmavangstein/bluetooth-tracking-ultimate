@@ -23,12 +23,15 @@ def calculate_abs_error(groundtruth, measurements):
     groundtruth = interpolate_groundtruth(groundtruth, measurements['timestamp'])
     merged = pd.merge(groundtruth, measurements, on='timestamp')
 
-    merged['abs_error'] = np.abs(merged['b1d'] - merged['d1'])
-    merged['abs_error_percentage'] = (merged['abs_error'] / merged['d1']) * 100
+    merged['abs_error'] = np.abs(merged['b3d'] - merged['d3'])
+    merged['abs_error_percentage'] = (merged['abs_error'] / merged['d3']) * 100
 
-    return merged
+    mean_error = merged['abs_error'].mean()
+    print(f"Mean Absolute Error: {mean_error:.2f} m")
 
-def plot_abs_error(timestamps, abs_error):
+    return merged, mean_error
+
+def plot_abs_error(timestamps, abs_error, mean_error):
 
     plt.figure(figsize=(10, 6))
     plt.plot(timestamps, abs_error, label='Absolute Error', color='blue', marker='o')
@@ -37,6 +40,10 @@ def plot_abs_error(timestamps, abs_error):
     plt.ylabel('Absolute Error (m)')
     plt.grid(True)
     plt.legend()
+
+    text_box = f"Mean Absolute Error: {mean_error: .2f} m"
+    plt.figtext(0.15, 0.85, text_box, fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
+
     plt.show()
 
 def plot_abs_error_percentage(timestamps, abs_error_percentage):
@@ -63,8 +70,8 @@ if __name__ == "__main__":
         print(f"File not found: {datafile}")
     groundtruth = pd.read_csv(datafile)
 
-    filtered_data = calculate_abs_error(groundtruth, measurements)
+    filtered_data, mean_error = calculate_abs_error(groundtruth, measurements)
     print(filtered_data)
 
-    plot_abs_error(filtered_data['timestamp'], filtered_data['abs_error'])
+    plot_abs_error(filtered_data['timestamp'], filtered_data['abs_error'], mean_error)
     plot_abs_error_percentage(filtered_data['timestamp'], filtered_data['abs_error_percentage'])
