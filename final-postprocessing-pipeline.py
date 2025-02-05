@@ -10,6 +10,7 @@ Uses a pandas df to store the data, and a matplotlib animation to animate the da
 """
 
 from analyze_ftm_data import analyze_ftm_data
+from abs_error import *
 
 import pandas as pd
 import numpy as np
@@ -178,6 +179,34 @@ def removeOutliers(df, window_size=10, residual_variance_threshold=1.5):
 
     return df
 
+def distanceCorrection(df):
+    """
+    Corrects the distance data in the dataframe using the data from the compass
+    If the player moves more than 10m away from the beacon in a second then the data is incorrect and should be corrected
+    """
+    df = df.copy()  
+
+    for column in df.columns:
+        if not column.startswith('b'):
+            continue
+
+        # Calculate the difference between consecutive measurements
+        df[f'{column}_diff'] = df[column].diff().abs()
+
+        # Identify the outliers where the difference is greater than 10 meters
+        outliers = df[f'{column}_diff'] > 9
+
+        # Replace outliers with NaN
+        df.loc[outliers, column] = np.nan
+
+        # Interpolate to fill NaN values
+        df[column].interpolate(method='linear', inplace=True)
+
+        # Drop the temporary diff column
+        df.drop(columns=[f'{column}_diff'], inplace=True)
+
+    return df
+
 # need to replace with the actual kalman in Final-kalman
 # Need to replace with acc-bound
 def kalmanFilter(df, x=np.array([10.0, 0]), P=np.diag([30, 16]), R=np.array([[5.]]), Q=Q_discrete_white_noise(dim=2, dt=0.3, var=2.35), dt=0.3):
@@ -247,14 +276,25 @@ def kalmanFilter(df, x=np.array([10.0, 0]), P=np.diag([30, 16]), R=np.array([[5.
 
     return df
 
-def processData(filename):
-    # Submit the tests we want to run on our data in order [("testName", testFunction)]
-    # ("EMA", smoothData)
-    # ("Kalman Filter", kalmanFilter)
-    # ("Outlier Removal", removeOutliers)
-    # ("Plot", plotPlayers)
-    tests = [("Outlier Removal", removeOutliers), ("Kalman Filter", kalmanFilter), ("EMA", smoothData)]
+# Plots the abolsute error of the measurements compared to the ground truth
+def absError(measurements, title="", gt="jan17-groundtruth.csv", plot=False):
+    measurements = measurements.copy()
 
+    script_dir = os.path.dirname(os.path.abspath(__file__))  
+ 
+    datafile = os.path.join(script_dir, "data", gt)  
+    if not os.path.exists(datafile):
+        print(f"File not found: {datafile}")
+    groundtruth = pd.read_csv(datafile)
+
+    filtered_data, mean_error = calculate_abs_error(groundtruth, measurements)
+
+    plot_abs_error(filtered_data['timestamp'], filtered_data['abs_error'], mean_error, plot=plot, title=title)
+
+    return filtered_data
+
+def processData(filename, tests):
+    
     # Load initial DF
     initalDf = loadData(os.path.join(os.getcwd(), filename))
     dfs = [initalDf]
@@ -263,9 +303,7 @@ def processData(filename):
     for testname, test in tests:
         df = dfs[-1]
         resultingDF = test(df)
-
         print(f"Test {testname} complete")
-
         # Append the resulting DF to the list of data
         dfs.append(resultingDF)
 
@@ -401,11 +439,11 @@ def plotPlayers(data, beacons, plot=True):
 
     # Plot player positions
     plt.figure(figsize=(10, 6))
-    plt.plot(player_positions[:, 0], player_positions[:, 1], 'o-', label='Player Path')
+    # plt.plot(player_positions[:, 0], player_positions[:, 1], 'o-', label='Player Path')
     plt.plot(player_positions1[:, 0], player_positions1[:, 1], 'o-', label='Player Path 1', alpha=0.5)
-    plt.plot(player_positions2[:, 0], player_positions2[:, 1], 'o-', label='Player Path 2', alpha=0.5)
-    plt.plot(player_positions3[:, 0], player_positions3[:, 1], 'o-', label='Player Path 3', alpha=0.5)
-    plt.plot(player_positions4[:, 0], player_positions4[:, 1], 'o-', label='Player Path 4', alpha=0.5)
+    # plt.plot(player_positions2[:, 0], player_positions2[:, 1], 'o-', label='Player Path 2', alpha=0.5)
+    # plt.plot(player_positions3[:, 0], player_positions3[:, 1], 'o-', label='Player Path 3', alpha=0.5)
+    # plt.plot(player_positions4[:, 0], player_positions4[:, 1], 'o-', label='Player Path 4', alpha=0.5)
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
     plt.ylabel('Y Position')
@@ -424,17 +462,26 @@ def main():
         os.remove(os.path.join(os.getcwd(), 'charts', f))
 
     # Process the data
+    # Submit the tests we want to run on our data in order [("testName", testFunction)]
+    # ("Distance Correction", distanceCorrection)
+    # ("EMA", smoothData)
+    # ("Kalman Filter", kalmanFilter)
+    # ("Outlier Removal", removeOutliers)
+    # ("Plot", plotPlayers)
+    tests = [("Outlier Removal", removeOutliers), ("Kalman Filter", kalmanFilter), ("EMA", smoothData), ("Distance Correction", distanceCorrection)]
+
     csv_filename = "4beaconv1.csv"
-    dfs = processData(csv_filename)
+    dfs = processData(csv_filename,tests)
 
     # Plot the 1d charts
     plot1d(dfs, plot=False)
 
     # Compare to GT Data
-    # Load GT DF
     gt = loadData("GroundyTruthy.csv")
     for df in dfs:
+        print(f"\nAnalyzing {df[0]}")
         analyze_ftm_data(df[1], gt, title=df[0], plot=False)
+        absError(df[1], title=df[0], plot=False)
 
     # Plot the final DFs
     beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
