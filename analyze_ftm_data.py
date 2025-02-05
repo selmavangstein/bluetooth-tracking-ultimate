@@ -25,6 +25,7 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, tit
          - green x => merged measured points
       6) Save merged to "merged_results.csv"
     """
+    df_meas = df_meas.copy()
 
     # 1) Parse timestamps with "HH:MM:SS.sss" if needed
     if not pd.api.types.is_datetime64_any_dtype(df_meas['timestamp']):
@@ -122,6 +123,7 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, tit
     plt.tight_layout()
     plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_gt.png'))
     if plot: plt.show()
+    plt.close()
 
     # 6) Save
     df_merged.to_csv("merged_results.csv", index=False)

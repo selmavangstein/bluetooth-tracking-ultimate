@@ -44,6 +44,86 @@ def smoothData(df, window_size=25):
         smoothed_df[column] = df[column].ewm(span=window_size, adjust=False).mean()
     return smoothed_df
         
+def pipelineRemoveOutliers(df, window_size=20, residual_variance_threshold=1.5, plot=True):
+    """
+    Removes outliers from the data and replaces them with linear fit values.
+    Revamped so it would fit in the pipeline and not include GT
+    """
+    df = df.copy()
+
+    # df['realtimestamp'] = pd.to_datetime(df['realtimestamp'], format='%H:%M:%S.%f')
+
+    pos_data = df['b3d']  # Possible columns: d3, d2, d1, d4 
+
+    # Compute residual variance from a linear fit
+    def residual_variance(y):
+        x = np.arange(len(y)).reshape(-1, 1) # Create an index array as the x variable
+        model = LinearRegression()
+        model.fit(x, y)  # Fit linear model
+        fitted_line = model.predict(x) # Predict the linear trend
+        residuals = y - fitted_line # Calculate residuals
+        return np.var(residuals) # Return variance of residuals
+
+    def replace_with_fit(y):
+        x = np.arange(len(y)).reshape(-1, 1)
+        model1 = LinearRegression()
+        model1.fit(x, y)
+        fitted_line1 = model1.predict(x)
+        residuals = y - fitted_line1
+
+        # Deviation in relation to the fitted line
+        std_res = np.std(residuals)
+
+        # No outliers to remove
+        if std_res == 0:
+            return fitted_line1
+
+        outliers_leftout = np.abs(residuals) < (residual_variance_threshold * std_res)
+
+        # New linear fit line without outlier points
+        if np.sum(outliers_leftout) >= 2:
+            model2 = LinearRegression()
+            model2.fit(x[outliers_leftout], y[outliers_leftout])
+            fitted_line2 = model2.predict(x)
+            return fitted_line2
+        else:
+            return fitted_line1
+    
+    # Detect obstacles based on residual variance
+    def detect_obstacles(data, residual_variance_threshold, window_size):
+        residual_variances = data.rolling(window=window_size).apply(residual_variance, raw=True)
+        high_residual_variance = residual_variances > residual_variance_threshold
+        return high_residual_variance
+
+    # Detect obstacles
+    df['obstacle_detected'] = detect_obstacles(pos_data, residual_variance_threshold, window_size)
+
+    adjusted_pos_data = pos_data.copy()
+    adjusted_pos_data = pos_data.copy().astype(float) # Needs to be float64
+
+    # Replace detected outliers within a sliding window
+    for i in range(len(pos_data) - window_size + 1):
+        start_index = max(0, i - window_size // 2)
+        end_index = min(len(pos_data), i + window_size // 2)
+        if df['obstacle_detected'].iloc[start_index:end_index].any():
+            window_slice = pos_data.iloc[start_index:end_index].values
+            replacement_values = replace_with_fit(window_slice)
+            for j in range(start_index, end_index):
+                curr_window_index = j - start_index
+                adjusted_pos_data.iloc[j] = min(replacement_values[curr_window_index], pos_data.iloc[j])
+
+    # Probably can get rid of this 
+    # plt.figure()
+    # plt.plot(df['realtimestamp'], pos_data, label="Measurement")
+    # plt.plot(df['realtimestamp'], adjusted_pos_data, label="Obstacle Replaced")
+    # plt.title(f"{title} Measurement with Obstacle Replacement")
+    # plt.legend()
+    # plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_path.png'))
+    # if plot: plt.show()
+    # plt.close()
+
+    return df
+
 def removeOutliers(df, window_size=10, residual_variance_threshold=1.5):
     """Removes outliers from a dataframe using a rolling residual variance threshold.
 
@@ -99,6 +179,7 @@ def removeOutliers(df, window_size=10, residual_variance_threshold=1.5):
     return df
 
 # need to replace with the actual kalman in Final-kalman
+# Need to replace with acc-bound
 def kalmanFilter(df, x=np.array([10.0, 0]), P=np.diag([30, 16]), R=np.array([[5.]]), Q=Q_discrete_white_noise(dim=2, dt=0.3, var=2.35), dt=0.3):
     """
     Applies the Kalman filter to every column in the dataframe that starts with 'b'.
@@ -226,6 +307,7 @@ def plot1d(dfs, plot=True):
         plt.grid()
         plt.savefig(os.path.join(os.getcwd(), f'charts/{beacon}_distance.png'))
         if plot: plt.show()
+        plt.close()
 
 def plotPlayers(data, beacons, plot=True):
     """
@@ -274,32 +356,56 @@ def plotPlayers(data, beacons, plot=True):
             raise ValueError("The beacons' positions don't allow for a unique solution")
         
         return position
-
-    def calulate_avg_position():
-        pass
     
     # Calculate player positions using trilateration
     # calculate the players positions based on the best trilateration data (three circle selma example, closest three circles)
     # calc based on averages of all combinations of 3 beacons
     # calc based on most likely next position based on acc data
     player_positions = []
+    player_positions1 = []
+    player_positions2 = []
+    player_positions3 = []
+    player_positions4 = []
+
 
     for index, row in df.iterrows():
         if index == 0: continue # skip first row
-        distances = [row[col] / 100 for col in df.columns if col.startswith('b')] # div by 100 to convert to meters
-        distances = distances[:-1] # remove the last column
+        distances = np.array([row[col] / 100 for col in df.columns if col.startswith('b')]) # div by 100 to convert to meters
         try:
-            position = trilaterate_one(beacons, distances)
-            player_positions.append(position)
+            #calculate the position of the player based on a combo of three beacons
+            position1 = trilaterate_one(beacons[[0, 1, 2]], distances[[0, 1, 2]])
+            position2 = trilaterate_one(beacons[[0, 1, 3]], distances[[0, 1, 3]])
+            position3 = trilaterate_one(beacons[[0, 2, 3]], distances[[0, 2, 3]])
+            position4 = trilaterate_one(beacons[[1, 2, 3]], distances[[1, 2, 3]])
+            # save avg, and individual positions
+            player_positions.append(np.mean([position1, position2, position3, position4], axis=0))
+            player_positions1.append(position1)
+            player_positions2.append(position2)
+            player_positions3.append(position3)
+            player_positions4.append(position4)
+
         except ValueError as e:
             print(f"Error at index {index}: {e}")
             player_positions.append([np.nan, np.nan])
+            player_positions1.append([np.nan, np.nan])
+            player_positions2.append([np.nan, np.nan])
+            player_positions3.append([np.nan, np.nan])
+            player_positions4.append([np.nan, np.nan])
+
 
     player_positions = np.array(player_positions)
+    player_positions1 = np.array(player_positions1)
+    player_positions2 = np.array(player_positions2)
+    player_positions3 = np.array(player_positions3)
+    player_positions4 = np.array(player_positions4)
 
     # Plot player positions
     plt.figure(figsize=(10, 6))
     plt.plot(player_positions[:, 0], player_positions[:, 1], 'o-', label='Player Path')
+    plt.plot(player_positions1[:, 0], player_positions1[:, 1], 'o-', label='Player Path 1', alpha=0.5)
+    plt.plot(player_positions2[:, 0], player_positions2[:, 1], 'o-', label='Player Path 2', alpha=0.5)
+    plt.plot(player_positions3[:, 0], player_positions3[:, 1], 'o-', label='Player Path 3', alpha=0.5)
+    plt.plot(player_positions4[:, 0], player_positions4[:, 1], 'o-', label='Player Path 4', alpha=0.5)
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
     plt.ylabel('Y Position')
@@ -308,10 +414,15 @@ def plotPlayers(data, beacons, plot=True):
     plt.grid()
     plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_path.png'))
     if plot: plt.show()
+    plt.close()
 
 
 
 def main():
+    # clear charts
+    for f in os.listdir(os.path.join(os.getcwd(), 'charts')):
+        os.remove(os.path.join(os.getcwd(), 'charts', f))
+
     # Process the data
     csv_filename = "4beaconv1.csv"
     dfs = processData(csv_filename)
@@ -320,16 +431,17 @@ def main():
     plot1d(dfs, plot=False)
 
     # Compare to GT Data
-    # Load initial DF
+    # Load GT DF
     gt = loadData("GroundyTruthy.csv")
-    # gt = pd.DataFrame("GroundyTruthy.csv")
     for df in dfs:
-        analyze_ftm_data(df[1], gt, title=df[0])
+        analyze_ftm_data(df[1], gt, title=df[0], plot=False)
 
     # Plot the final DFs
-    beaconPositions = np.array([[20, 0], [0, 0], [0, 40]])
+    beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
     for d in dfs:
-        plotPlayers(d, beaconPositions)
+        plotPlayers(d, beaconPositions, plot=False)
+
+    
 
 if __name__ == "__main__":
     main()

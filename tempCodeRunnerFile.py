@@ -1,1 +1,2 @@
-pd.read_csv(filename)
+ta[0]
+    # df = data[

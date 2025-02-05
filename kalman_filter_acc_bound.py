@@ -8,6 +8,7 @@ from kalman_plotting import plot_results
 import matplotlib.pyplot as plt
 
 
+
 def pos_vel_filter(x, P, R, Q=0., dt=1.):
     """ Returns a KalmanFilter which implements a
     constant velocity model for a state [x dx].T
