@@ -59,48 +59,36 @@ def kalman_filter(zs, ta, times, smoothing=True):
     average_difference = time_differences.dt.total_seconds().mean()
 
     dt = average_difference
-    #Use initial measurement to set x0. Can take x1-x0=v0
     x = np.array([zs[0], 0]) #initial state.
-    P = np.diag([5., 9.]) #initial state uncertainty 
+    P = np.diag([1., 1.]) #initial state uncertainty 
     #(velocity p should be max 9. If we make sure they are held still for a few seconds at initialization, we can lower it to like 1)
-    Q = Q_discrete_white_noise(dim=2, dt=dt, var=2.35) #process noise
-    R = np.array([[10.]]) #measurement covariance matrix /sensor variance.
+    Q = Q_discrete_white_noise(dim=2, dt=dt, var=2.35) #process noise. What should var be? Look at accel data.
+    R = np.array([[10.]]) #measurement covariance matrix /sensor variance. Use variance testing to decide this
 
-    #df_data = pd.read_csv("bluetooth-tracking-ultimate\makecharts\walking test to 60_cleaned.csv")
-    #zs = df_data["distance"]
-
-    #s = run(x, P, R, Q, dt=dt, zs=zs, make_plot=True)
-
-    #we can also replace the whole run thing we can use batch_filter to run it on a dataset we already have
-
-    #we already have set a P matrix. Then we can just do
     f = pos_vel_filter(x, P, R, Q, dt)
     s = Saver(f)
     for i in range(1, len(zs)):
         #can change f.F here to reflect dt fluctuations.
-        #generall worth it if it fluctuates more than 10% from the mean
-        #should then also update f.Q
+        #generally worth it with fluctuations more than 10% from the mean
+        #should then also update f.Q.
         f.predict()
 
-        #max speed can limit this as well
-
-        #uses acceleration as a max limit for position change
+        #uses the magnitude of the acceleration along with estimated velcoity as a max limit for position change
         if i>1:
             max_pos_change = f.x[1] * dt + 0.5 *  ta[i]* dt**2
             predicted_change = abs(f.x[0] - zs[i-1])
             if predicted_change > max_pos_change:
                 f.x[0] = zs[i-1] + np.sign(predicted_change) * max_pos_change
+
         f.update(zs[i])
         s.save()
     xs = s.x
     covs = s.P
-    #xs, covs, _, _ = f.batch_filter(zs, saver=s)
     smooth_xs = None
     if smoothing:
         smooth_xs, smooth_cov, _, _ = f.rts_smoother(xs, covs) #figure a way to add to saver
-    #plot xs
+
     s.to_array()
-    #plot_results(s.x[:, 0], s.z, s.P)
 
     #this returns a saver object with all the information about the filter
     return s, smooth_xs
