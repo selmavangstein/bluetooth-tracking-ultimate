@@ -23,7 +23,7 @@ def pos_vel_filter(x, P, R, Q=0., dt=1.):
     if np.isscalar(P):
         kf.P *= P                 # covariance matrix 
     else:
-        kf.P[:] = P               # [:] makes deep copy
+        kf.P[:] = P               # [:] makes deep copy if matrix is already given
     if np.isscalar(Q):
         kf.Q = Q_discrete_white_noise(dim=2, dt=dt, var=Q)
     else:
@@ -49,7 +49,7 @@ def run(x0=(0.,0.), P=500, R=0, Q=0, dt=1.0, zs=None, make_plot=False, actual=No
     if make_plot:
         print("creating plots")
         s.to_array()
-        # plot_results(s.x[:, 0], s.z, s.P)
+        plot_results(s.x[:, 0], s.z, s.P)
     return s
 
 def kalman_filter(zs, ta, times, smoothing=True):
@@ -63,7 +63,7 @@ def kalman_filter(zs, ta, times, smoothing=True):
     x = np.array([zs[0], 0]) #initial state.
     P = np.diag([1., 1.]) #initial state uncertainty 
     #(velocity p should be max 9. If we make sure they are held still for a few seconds at initialization, we can lower it to like 1)
-    Q = Q_discrete_white_noise(dim=2, dt=dt, var=2.35) #process noise. What should var be? Look at accel data.
+    Q = Q_discrete_white_noise(dim=2, dt=dt, var=20*dt) #process noise. Used change high bound for max accel. times dt. Might lower because model isn't great, so must trust measurements more.
     R = np.array([[10.]]) #measurement covariance matrix /sensor variance. Use variance testing to decide this
 
     f = pos_vel_filter(x, P, R, Q, dt)
@@ -87,7 +87,7 @@ def kalman_filter(zs, ta, times, smoothing=True):
     covs = s.P
     smooth_xs = None
     if smoothing:
-        smooth_xs, smooth_cov, _, _ = f.rts_smoother(xs, covs) #figure a way to add to saver
+        smooth_xs, smooth_cov, _, _ = f.rts_smoother(xs, covs)
 
     s.to_array()
 
