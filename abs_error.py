@@ -3,17 +3,28 @@ import os
 from matplotlib import pyplot as plt
 import numpy as np
 
+def interpolate_groundtruth(groundtruth, measurement_timestamps):
+
+    groundtruth['timestamp'] = pd.to_datetime(groundtruth['timestamp'], format="%H:%M:%S")
+    measurement_timestamps = pd.to_datetime(measurement_timestamps, format="%H:%M:%S.%f")
+
+    groundtruth = groundtruth.set_index('timestamp')
+    groundtruth = groundtruth.reindex(groundtruth.index.union(measurement_timestamps)).interpolate(method='time')
+    groundtruth = groundtruth.loc[measurement_timestamps].reset_index()
+
+    return groundtruth
+
 def calculate_abs_error(groundtruth, measurements):
 
-    groundtruth[['d1','d2','d3','d4']] *= 100
+    measurements[['b1d','b2d','b3d','b4d']] /= 100
 
-    groundtruth['timestamp'] = pd.to_datetime(groundtruth['timestamp'])
-    measurements['timestamp'] = pd.to_datetime(measurements['timestamp']).dt.floor('S')
+    measurements['timestamp'] = pd.to_datetime(measurements['timestamp'], format="%H:%M:%S.%f")
 
+    groundtruth = interpolate_groundtruth(groundtruth, measurements['timestamp'])
     merged = pd.merge(groundtruth, measurements, on='timestamp')
 
-    merged['abs_error'] = np.abs(merged['b3d'] - merged['d2'])
-    merged['abs_error_percentage'] = (merged['abs_error'] / merged['d2']) * 100
+    merged['abs_error'] = np.abs(merged['b1d'] - merged['d1'])
+    merged['abs_error_percentage'] = (merged['abs_error'] / merged['d1']) * 100
 
     return merged
 
@@ -23,7 +34,7 @@ def plot_abs_error(timestamps, abs_error):
     plt.plot(timestamps, abs_error, label='Absolute Error', color='blue', marker='o')
     plt.title('Absolute Error Over Time')
     plt.xlabel('Time')
-    plt.ylabel('Absolute Error (cm)')
+    plt.ylabel('Absolute Error (m)')
     plt.grid(True)
     plt.legend()
     plt.show()
@@ -41,13 +52,13 @@ def plot_abs_error_percentage(timestamps, abs_error_percentage):
 if __name__ == "__main__":
 
     script_dir = os.path.dirname(os.path.abspath(__file__))  
+
     datafile = os.path.join(script_dir, "data", "4beaconv1.csv")
     if not os.path.exists(datafile):
         print(f"File not found: {datafile}")
     measurements = pd.read_csv(datafile)
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))  
-    datafile = os.path.join(script_dir, "data", "groundtruth-plus.csv")  
+ 
+    datafile = os.path.join(script_dir, "data", "jan17-groundtruth.csv")  
     if not os.path.exists(datafile):
         print(f"File not found: {datafile}")
     groundtruth = pd.read_csv(datafile)
