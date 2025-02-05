@@ -11,6 +11,7 @@ Uses a pandas df to store the data, and a matplotlib animation to animate the da
 
 from analyze_ftm_data import analyze_ftm_data
 from abs_error import *
+from kalman_filter_acc_bound import pipelineKalman
 
 import pandas as pd
 import numpy as np
@@ -294,7 +295,6 @@ def absError(measurements, title="", gt="jan17-groundtruth.csv", plot=False):
     return filtered_data
 
 def processData(filename, tests):
-    
     # Load initial DF
     initalDf = loadData(os.path.join(os.getcwd(), filename))
     dfs = [initalDf]
@@ -465,10 +465,11 @@ def main():
     # Submit the tests we want to run on our data in order [("testName", testFunction)]
     # ("Distance Correction", distanceCorrection)
     # ("EMA", smoothData)
+    # ("Kalman Filter", pipelineKalman) - doesn't work yet
     # ("Kalman Filter", kalmanFilter)
     # ("Outlier Removal", removeOutliers)
     # ("Plot", plotPlayers)
-    tests = [("Outlier Removal", removeOutliers), ("Kalman Filter", kalmanFilter), ("EMA", smoothData), ("Distance Correction", distanceCorrection)]
+    tests = [("Outlier Removal", removeOutliers), ("EMA", smoothData)]
 
     csv_filename = "4beaconv1.csv"
     dfs = processData(csv_filename,tests)

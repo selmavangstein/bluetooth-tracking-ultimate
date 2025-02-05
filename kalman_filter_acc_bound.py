@@ -4,10 +4,10 @@ import numpy as np
 from filterpy.kalman import KalmanFilter
 import pandas as pd
 #from kf_book.mkf_internal import plot_track
-from kalman_plotting import plot_results
+# from kalman_plotting import plot_results
 import matplotlib.pyplot as plt
 
-
+from acceleration_vector import find_acceleration_magnitude
 
 def pos_vel_filter(x, P, R, Q=0., dt=1.):
     """ Returns a KalmanFilter which implements a
@@ -49,12 +49,13 @@ def run(x0=(0.,0.), P=500, R=0, Q=0, dt=1.0, zs=None, make_plot=False, actual=No
     if make_plot:
         print("creating plots")
         s.to_array()
-        plot_results(s.x[:, 0], s.z, s.P)
+        # plot_results(s.x[:, 0], s.z, s.P)
     return s
 
 def kalman_filter(zs, ta, times, smoothing=True):
     '''Takes measurements and timestamps (must be on datetime format). Returns filtered data'''
 
+    times = pd.to_datetime(times)
     time_differences = times.diff()
     average_difference = time_differences.dt.total_seconds().mean()
 
@@ -92,3 +93,21 @@ def kalman_filter(zs, ta, times, smoothing=True):
 
     #this returns a saver object with all the information about the filter
     return s, smooth_xs
+
+def pipelineKalman(df):
+    df = df.copy()  
+    df = find_acceleration_magnitude(df) # adds acceleration vectors to the df
+
+    results = {}
+    for column in df.columns:
+        if column.startswith('b'):
+            zs = df[column].values
+            xs, smooth_xs = kalman_filter(zs, df['ta'].values, df['timestamp'], smoothing=True)
+            results[column] = xs[:, 0]  # store the position estimates
+
+    # Add the results to the dataframe, replacing the original data
+    for column, values in results.items():
+        df[column] = values
+
+    return df
+
