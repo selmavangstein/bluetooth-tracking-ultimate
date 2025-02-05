@@ -49,7 +49,7 @@ def run(x0=(0.,0.), P=500, R=0, Q=0, dt=1.0, zs=None, make_plot=False, actual=No
     if make_plot:
         print("creating plots")
         s.to_array()
-        plot_results(s.x[:, 0], s.z, s.P)
+        # plot_results(s.x[:, 0], s.z, s.P)
     return s
 
 def kalman_filter(zs, ta, times, smoothing=True):
