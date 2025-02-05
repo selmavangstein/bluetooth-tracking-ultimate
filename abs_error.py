@@ -31,11 +31,11 @@ def calculate_abs_error(groundtruth, measurements):
 
     return merged, mean_error
 
-def plot_abs_error(timestamps, abs_error, mean_error):
+def plot_abs_error(timestamps, abs_error, mean_error, plot=False, title=""):
 
     plt.figure(figsize=(10, 6))
     plt.plot(timestamps, abs_error, label='Absolute Error', color='blue', marker='o')
-    plt.title('Absolute Error Over Time')
+    plt.title(f'Absolute Error Over Time - {title}')
     plt.xlabel('Time')
     plt.ylabel('Absolute Error (m)')
     plt.grid(True)
@@ -44,7 +44,9 @@ def plot_abs_error(timestamps, abs_error, mean_error):
     text_box = f"Mean Absolute Error: {mean_error: .2f} m"
     plt.figtext(0.15, 0.85, text_box, fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
 
-    plt.show()
+    plt.savefig(os.path.join(os.getcwd(), f'charts/{title}-abserror.png'))
+    if plot: plt.show()
+    plt.close()
 
 def plot_abs_error_percentage(timestamps, abs_error_percentage):
     plt.figure(figsize=(10, 6))
@@ -71,7 +73,7 @@ if __name__ == "__main__":
     groundtruth = pd.read_csv(datafile)
 
     filtered_data, mean_error = calculate_abs_error(groundtruth, measurements)
-    print(filtered_data)
+    # print(filtered_data)
 
     plot_abs_error(filtered_data['timestamp'], filtered_data['abs_error'], mean_error)
-    plot_abs_error_percentage(filtered_data['timestamp'], filtered_data['abs_error_percentage'])
+    # plot_abs_error_percentage(filtered_data['timestamp'], filtered_data['abs_error_percentage'])

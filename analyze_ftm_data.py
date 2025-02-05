@@ -127,7 +127,7 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, tit
 
     # 6) Save
     df_merged.to_csv("merged_results.csv", index=False)
-    print("Done! Results saved to 'merged_results.csv'.")
+    # print("Done! Results saved to 'merged_results.csv'.")
 
     return df_merged
 
