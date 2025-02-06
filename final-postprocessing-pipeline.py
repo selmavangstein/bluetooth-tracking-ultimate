@@ -297,6 +297,19 @@ def absError(measurements, title="", gt="jan17-groundtruth.csv", plot=False):
 def processData(filename, tests):
     # Load initial DF
     initalDf = loadData(os.path.join(os.getcwd(), filename))
+    # Check if the first row has the required headers
+    required_headers = ["timestamp", "wearabletimestamp", "b1d", "b2d", "b3d", "b4d", "xa", "ya", "za"]
+    if list(initalDf.columns) != required_headers:
+        # Add the required headers
+        initalDf.columns = required_headers
+
+    # Ensure all values are floats/ints and not strings
+    for column in initalDf.columns:
+        if initalDf[column].dtype == 'object':
+            try:
+                initalDf[column] = initalDf[column].astype(float)
+            except ValueError:
+                print(f"Column {column} cannot be converted to float.")
     dfs = [initalDf]
 
     # Run Tests on DF
@@ -408,7 +421,7 @@ def plotPlayers(data, beacons, plot=True):
 
     for index, row in df.iterrows():
         if index == 0: continue # skip first row
-        distances = np.array([row[col] / 100 for col in df.columns if col.startswith('b')]) # div by 100 to convert to meters
+        distances = np.array([row[col] for col in df.columns if col.startswith('b')]) # div by 100 to convert to meters
         try:
             #calculate the position of the player based on a combo of three beacons
             position1 = trilaterate_one(beacons[[0, 1, 2]], distances[[0, 1, 2]])
@@ -469,25 +482,29 @@ def main():
     # ("Kalman Filter", kalmanFilter)
     # ("Outlier Removal", removeOutliers)
     # ("Plot", plotPlayers)
-    tests = [("Outlier Removal", removeOutliers), ("EMA", smoothData)]
+    tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers), ("Kalman Filter", kalmanFilter), ("EMA", smoothData), ("Distance Correction", distanceCorrection)]
+    filenames = ["standing still.csv"]
 
-    csv_filename = "4beaconv1.csv"
-    dfs = processData(csv_filename,tests)
+    for name in filenames:
+        csv_filename = f"/Users/cullenbaker/school/comps/bluetooth-tracking-ultimate/data/{name}"
+        dfs = processData(csv_filename,tests)
 
-    # Plot the 1d charts
-    plot1d(dfs, plot=False)
+        # Plot the 1d charts
+        plot1d(dfs, plot=False)
 
-    # Compare to GT Data
-    gt = loadData("GroundyTruthy.csv")
-    for df in dfs:
-        print(f"\nAnalyzing {df[0]}")
-        analyze_ftm_data(df[1], gt, title=df[0], plot=False)
-        absError(df[1], title=df[0], plot=False)
+        # Compare to GT Data
+        gt = loadData("GroundyTruthy.csv")
+        for df in dfs:
+            print(f"\nAnalyzing {df[0]}")
+            analyze_ftm_data(df[1], gt, title=df[0], plot=False)
+            absError(df[1], title=df[0], plot=False)
 
-    # Plot the final DFs
-    beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
-    for d in dfs:
-        plotPlayers(d, beaconPositions, plot=False)
+        print(dfs)
+
+        # Plot the final DFs
+        beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
+        for d in dfs:
+            plotPlayers(d, beaconPositions, plot=False)
 
     
 
