@@ -30,25 +30,6 @@ def pos_vel_filter(x, P, R, Q=0., dt=1.):
         kf.Q[:] = Q
     return kf
 
-def run(x0=(0.,0.), P=500, R=0, Q=0, dt=1.0, zs=None, make_plot=False, actual=None):
-    if zs is None:
-        print("no data provided, cannot run filter")
-        return False
-
-    # create the Kalman filter
-    kf, s = pos_vel_filter(x0, R=R, P=P, Q=Q, dt=dt)  
-
-    # run the kalman filter and store the results
-    for z in zs:
-        kf.predict() #predicts next position
-        kf.update(z) #takes next measurement, updates position
-        s.save()
-
-    if make_plot:
-        print("creating plots")
-        s.to_array()
-    return s
-
 def kalman_filter(zs, ta, times, smoothing=True):
     '''Takes measurements and timestamps (must be on datetime format). Returns filtered data'''
 
@@ -58,10 +39,10 @@ def kalman_filter(zs, ta, times, smoothing=True):
 
     dt = average_difference
     x = np.array([zs[0], 0]) #initial state.
-    P = np.diag([1., 1.]) #initial state uncertainty 
+    P = np.diag([0.2, 0.2]) #initial state uncertainty 
     #(velocity p should be max 9. If we make sure they are held still for a few seconds at initialization, we can lower it to like 1)
     Q = Q_discrete_white_noise(dim=2, dt=dt, var=20*dt) #process noise. Used change high bound for max accel. times dt. Might lower because model isn't great, so must trust measurements more.
-    R = np.array([[10.]]) #measurement covariance matrix /sensor variance. Use variance testing to decide this
+    R = np.array([[0.2]]) #measurement covariance matrix /sensor variance. Use variance testing to decide this
 
     f = pos_vel_filter(x, P, R, Q, dt)
     s = Saver(f)
