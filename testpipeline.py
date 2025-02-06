@@ -1,10 +1,8 @@
-import kalman_filter_pos_vel_acc
-import kalman_filter_pos_vel
+import kalman_filter_acc_bound
 import acceleration_vector
 import pandas as pd
 import os
 from matplotlib import pyplot as plt
-from kalman_plotting_borrowed import plot_track
 import numpy as np
 
 script_dir = os.path.dirname(os.path.abspath(__file__))  # Directory of the script
@@ -45,7 +43,7 @@ else:
 true_dist = df["groundtruth"]
 
 #kalman_filter_pos_vel_acc.kalman_filter(pos_data, acceleration_data, df['timestamp'])
-s, smooth_xs = kalman_filter_pos_vel.kalman_filter(pos_data, df['timestamp'])
+s, smooth_xs = kalman_filter_acc_bound.kalman_filter(pos_data, acceleration_magnitudes, df['timestamp'], smoothing=True)
 #can use s, smooth_xs to update the dataframe. s is a saver object that stores a bunch of info about the filter.
 #We will probably have to choose some things from s to store. 
 
@@ -53,7 +51,7 @@ xs = s.x
 zs = s.z
 cov = s.P
 
-plot_track(xs[:, 0], true_dist, zs, cov)
+#plot_track(xs[:, 0], true_dist, zs, cov)
 
 plt.figure()
 plt.plot(df['timestamp'], true_dist, label="truth")

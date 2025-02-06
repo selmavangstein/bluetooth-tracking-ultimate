@@ -31,7 +31,6 @@ def pos_vel_filter(x, P, R, Q=0., dt=1.):
     return kf
 
 def run(x0=(0.,0.), P=500, R=0, Q=0, dt=1.0, zs=None, make_plot=False, actual=None):
-
     if zs is None:
         print("no data provided, cannot run filter")
         return False
@@ -41,7 +40,6 @@ def run(x0=(0.,0.), P=500, R=0, Q=0, dt=1.0, zs=None, make_plot=False, actual=No
 
     # run the kalman filter and store the results
     for z in zs:
-        #can I update dt here?
         kf.predict() #predicts next position
         kf.update(z) #takes next measurement, updates position
         s.save()
@@ -49,7 +47,6 @@ def run(x0=(0.,0.), P=500, R=0, Q=0, dt=1.0, zs=None, make_plot=False, actual=No
     if make_plot:
         print("creating plots")
         s.to_array()
-        # plot_results(s.x[:, 0], s.z, s.P)
     return s
 
 def kalman_filter(zs, ta, times, smoothing=True):
@@ -68,28 +65,30 @@ def kalman_filter(zs, ta, times, smoothing=True):
 
     f = pos_vel_filter(x, P, R, Q, dt)
     s = Saver(f)
-    for i in range(1, len(zs)):
+    for i in range(0, len(zs)):
         #can change f.F here to reflect dt fluctuations.
         #generally worth it with fluctuations more than 10% from the mean
         #should then also update f.Q.
         f.predict()
 
         #uses the magnitude of the acceleration along with estimated velcoity as a max limit for position change
-        if i>1:
-            max_pos_change = f.x[1] * dt + 0.5 *  ta[i]* dt**2
+        if i>=1:
+            max_pos_change = abs(f.x[1]) * dt + 0.5 *  ta[i]* dt**2
             predicted_change = abs(f.x[0] - zs[i-1])
             if predicted_change > max_pos_change:
-                f.x[0] = zs[i-1] + np.sign(predicted_change) * max_pos_change
+                f.x[0] = zs[i-1] + np.sign(f.x[1]) * max_pos_change
 
         f.update(zs[i])
         s.save()
+
+    s.to_array()
     xs = s.x
     covs = s.P
     smooth_xs = None
     if smoothing:
         smooth_xs, smooth_cov, _, _ = f.rts_smoother(xs, covs)
 
-    s.to_array()
+    
 
     #this returns a saver object with all the information about the filter
     return s, smooth_xs
