@@ -425,21 +425,17 @@ def main():
         plot1d(dfs, plot=False)
 
         # Compare to GT Data
-        gt = loadData("UWB-GT-Feb5.csv")
-        # # Check if GT data has headers...
-        # required_headers = ["timestamp", "wearabletimestamp", "b1d", "b2d", "b3d", "b4d", "xa", "ya", "za", "n", "f", "d", "d",  "g", "h"]
-        # if list(gt.columns) != required_headers:
-        #     # Add the required headers
-        #     gt.columns = required_headers
+        GT_File = "UWB-GT-Feb5.csv"
+        gt = loadData(os.path.join(script_dir, "data", GT_File))
         for df in dfs:
             print(f"\nAnalyzing {df[0]}")
-            analyze_ftm_data(df[1], gt, title=df[0], plot=True)
+            analyze_ftm_data(df[1], gt, title=df[0], plot=False)
             absError(df[1], title=df[0], plot=False)
 
         print(dfs)
 
         # Plot the final DFs
-        beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
+        beaconPositions = np.array([[18, 0], [18, 12], [0, 0], [0, 12]])
         for d in dfs:
             plotPlayers(d, beaconPositions, plot=False)
 
