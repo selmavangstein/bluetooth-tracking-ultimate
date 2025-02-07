@@ -482,11 +482,13 @@ def main():
     # ("Kalman Filter", kalmanFilter)
     # ("Outlier Removal", removeOutliers)
     # ("Plot", plotPlayers)
-    tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers), ("Kalman Filter", kalmanFilter), ("EMA", smoothData), ("Distance Correction", distanceCorrection)]
+    tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Distance Correction", distanceCorrection)]
     filenames = ["standing still.csv"]
 
     for name in filenames:
         csv_filename = f"/Users/cullenbaker/school/comps/bluetooth-tracking-ultimate/data/{name}"
+        script_dir = os.path.dirname(os.path.abspath(__file__)) 
+        csv_filename = os.path.join(script_dir, "data", name)
         dfs = processData(csv_filename,tests)
 
         # Plot the 1d charts
@@ -496,7 +498,7 @@ def main():
         gt = loadData("GroundyTruthy.csv")
         for df in dfs:
             print(f"\nAnalyzing {df[0]}")
-            analyze_ftm_data(df[1], gt, title=df[0], plot=False)
+            analyze_ftm_data(df[1], gt, title=df[0], plot=True)
             absError(df[1], title=df[0], plot=False)
 
         print(dfs)

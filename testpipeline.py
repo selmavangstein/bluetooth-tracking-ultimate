@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 script_dir = os.path.dirname(os.path.abspath(__file__))  # Directory of the script
-datafile = os.path.join(script_dir, "data", "4beaconv1.csv")  # Correctly join paths
+datafile = os.path.join(script_dir, "data", "standing still.csv")  # Correctly join paths
 if not os.path.exists(datafile):
     print(f"File not found: {datafile}")
 df = pd.read_csv(datafile)  # Read the CSV file
@@ -52,6 +52,8 @@ zs = s.z
 cov = s.P
 
 #plot_track(xs[:, 0], true_dist, zs, cov)
+
+df['filtered'] = s.x[:, 0]
 
 plt.figure()
 plt.plot(df['timestamp'], true_dist, label="truth")

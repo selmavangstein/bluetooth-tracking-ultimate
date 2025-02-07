@@ -82,7 +82,8 @@ def pipelineKalman(df):
     for column in df.columns:
         if column.startswith('b'):
             zs = df[column].values
-            xs, smooth_xs = kalman_filter(zs, df['ta'].values, df['timestamp'], smoothing=True)
+            s, smooth_xs = kalman_filter(zs, df['ta'].values, df['timestamp'], smoothing=True)
+            xs = s.x
             results[column] = xs[:, 0]  # store the position estimates
 
     # Add the results to the dataframe, replacing the original data
