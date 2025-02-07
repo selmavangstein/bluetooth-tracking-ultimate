@@ -262,7 +262,7 @@ def processData(filename, tests):
     # Return a list of all the dataframes we created, final df is [-1]
     return final
 
-def plot1d(dfs, plot=True):
+def plot1d(dfs, subdir, plot=True):
     """
     Plots 1d charts of each beacon at each step in the ppp
     """
@@ -287,11 +287,11 @@ def plot1d(dfs, plot=True):
         plt.title(f'{beacon} Distance Over Time')
         plt.legend()
         plt.grid()
-        plt.savefig(os.path.join(os.getcwd(), f'charts/{beacon}_distance.png'))
+        plt.savefig(os.path.join(os.getcwd(), f'charts/{beacon}_distance({subdir}).png'))
         if plot: plt.show()
         plt.close()
 
-def plotPlayers(data, beacons, plot=True):
+def plotPlayers(data, beacons, subdir, plot=True):
     """
     Plots the players' movements and 1d charts of the players' distances from each beacon, saves all plots to /charts
     """
@@ -394,7 +394,7 @@ def plotPlayers(data, beacons, plot=True):
     plt.title(f'Player Movement Path | {title}')
     plt.legend()
     plt.grid()
-    plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_path.png'))
+    plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_path({subdir}).png'))
     if plot: plt.show()
     plt.close()
 
@@ -409,9 +409,8 @@ def main():
     # Submit the tests we want to run on our data in order [("testName", testFunction)]
     # ("Distance Correction", distanceCorrection)
     # ("EMA", smoothData)
-    # ("Kalman Filter", pipelineKalman) - doesn't work yet
+    # ("Kalman Filter", pipelineKalman)
     # ("Outlier Removal", removeOutliers)
-    # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Distance Correction", distanceCorrection)]
     filenames = ["standing still.csv"]
 
@@ -422,7 +421,7 @@ def main():
         dfs = processData(csv_filename,tests)
 
         # Plot the 1d charts
-        plot1d(dfs, plot=False)
+        plot1d(dfs, plot=False, subdir=name)
 
         # Compare to GT Data
         GT_File = "UWB-GT-Feb5.csv"
@@ -437,7 +436,7 @@ def main():
         # Plot the final DFs
         beaconPositions = np.array([[18, 0], [18, 12], [0, 0], [0, 12]])
         for d in dfs:
-            plotPlayers(d, beaconPositions, plot=False)
+            plotPlayers(d, beaconPositions, plot=False, subdir=name)
 
     
 
