@@ -425,7 +425,12 @@ def main():
         plot1d(dfs, plot=False)
 
         # Compare to GT Data
-        gt = loadData("GroundyTruthy.csv")
+        gt = loadData("UWB-GT-Feb5.csv")
+        # # Check if GT data has headers...
+        # required_headers = ["timestamp", "wearabletimestamp", "b1d", "b2d", "b3d", "b4d", "xa", "ya", "za", "n", "f", "d", "d",  "g", "h"]
+        # if list(gt.columns) != required_headers:
+        #     # Add the required headers
+        #     gt.columns = required_headers
         for df in dfs:
             print(f"\nAnalyzing {df[0]}")
             analyze_ftm_data(df[1], gt, title=df[0], plot=True)
