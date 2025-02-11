@@ -456,11 +456,11 @@ def plotPlayers(data, beacons, plot=True):
 
     # Plot player positions
     plt.figure(figsize=(10, 6))
-    # plt.plot(player_positions[:, 0], player_positions[:, 1], 'o-', label='Player Path')
+    plt.plot(player_positions[:, 0], player_positions[:, 1], 'o-', label='Player Path')
     plt.plot(player_positions1[:, 0], player_positions1[:, 1], 'o-', label='Player Path 1', alpha=0.5)
-    # plt.plot(player_positions2[:, 0], player_positions2[:, 1], 'o-', label='Player Path 2', alpha=0.5)
-    # plt.plot(player_positions3[:, 0], player_positions3[:, 1], 'o-', label='Player Path 3', alpha=0.5)
-    # plt.plot(player_positions4[:, 0], player_positions4[:, 1], 'o-', label='Player Path 4', alpha=0.5)
+    plt.plot(player_positions2[:, 0], player_positions2[:, 1], 'o-', label='Player Path 2', alpha=0.5)
+    plt.plot(player_positions3[:, 0], player_positions3[:, 1], 'o-', label='Player Path 3', alpha=0.5)
+    plt.plot(player_positions4[:, 0], player_positions4[:, 1], 'o-', label='Player Path 4', alpha=0.5)
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
     plt.ylabel('Y Position')
@@ -487,7 +487,7 @@ def main():
     # ("Outlier Removal", removeOutliers)
     # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Distance Correction", distanceCorrection)]
-    filenames = ["feb9/2-9-test3-ftm.log"]
+    filenames = ["feb9/2-9-test3-uwb.csv"]
 
     for name in filenames:
         #csv_filename = f"/Users/cullenbaker/school/comps/bluetooth-tracking-ultimate/data/{name}"
@@ -496,16 +496,18 @@ def main():
         dfs = processData(csv_filename,tests)
 
         # Plot the 1d charts
-        plot1d(dfs, plot=True)
+        plot1d(dfs, plot=False)
 
         # Compare to GT Data
-        gt = loadData("GroundyTruthy.csv")
+        gt_filename = "feb9/2-9-test3-groundtruth.csv"
+        gt_path = os.path.join(script_dir, "data", gt_filename)
+        gt = loadData(gt_path)
         for df in dfs:
             print(f"\nAnalyzing {df[0]}")
             analyze_ftm_data(df[1], gt, title=df[0], plot=False)
             absError(df[1], title=df[0], plot=False)
 
-        print(dfs)
+        #print(dfs)
 
         # Plot the final DFs
         beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])

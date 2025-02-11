@@ -41,8 +41,8 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, tit
     meas_beacon_cols = [c for c in df_meas.columns if re.match(r'^b\d+d$', c)]
 
     # Scale only the measured columns from cm->m
-    for c in meas_beacon_cols:
-        df_meas[c] /= 100.0
+    #for c in meas_beacon_cols:
+    #    df_meas[c] /= 100.0
 
     # NO scaling for ground truth, assuming already in meters
 
