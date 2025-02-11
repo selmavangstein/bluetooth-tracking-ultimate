@@ -27,6 +27,7 @@ from filterpy.kalman import predict
 from filterpy.kalman import KalmanFilter
 import os
 import matplotlib.pyplot as plt
+from datacleanup import cleanup_file
 
 def loadData(filename):
     """
@@ -208,6 +209,75 @@ def distanceCorrection(df):
 
     return df
 
+# need to replace with the actual kalman in Final-kalman
+# Need to replace with acc-bound
+def kalmanFilter(df, x=np.array([10.0, 0]), P=np.diag([30, 16]), R=np.array([[5.]]), Q=Q_discrete_white_noise(dim=2, dt=0.3, var=2.35), dt=0.3):
+    """
+    Applies the Kalman filter to every column in the dataframe that starts with 'b'.
+    """
+    def pos_vel_filter(x, P, R, Q=0., dt=1.):
+        """ Returns a KalmanFilter which implements a
+        constant velocity model for a state [x dx].T
+        """
+
+        #the ones that are explicitly set in this fcn are probably less likely to be adjusted
+        kf = KalmanFilter(dim_x=2, dim_z=1)
+        kf.x = np.array([x[0], x[1]]) # location and velocity
+        kf.F = np.array([[1., dt],
+                        [0.,  1.]])  # state transition matrix
+        kf.H = np.array([[1., 0]])    # Measurement function
+        kf.R *= R                     # measurement uncertainty
+        if np.isscalar(P):
+            kf.P *= P                 # covariance matrix 
+        else:
+            kf.P[:] = P               # [:] makes deep copy
+        if np.isscalar(Q):
+            kf.Q = Q_discrete_white_noise(dim=2, dt=dt, var=Q)
+        else:
+            kf.Q[:] = Q
+        return kf
+    
+    def run(x0=(0.,0.), P=500, R=0, Q=0, dt=1.0, 
+        track=None, zs=None,
+        count=0, do_plot=True, **kwargs):
+        """
+        track is the actual position of the dog, zs are the 
+        corresponding measurements. 
+        """
+
+        # Simulate dog if no data provided. 
+        if zs is None:
+            print("no data provided, cannot run filter")
+            return False
+
+        # create the Kalman filter
+        kf = pos_vel_filter(x0, R=R, P=P, Q=Q, dt=dt)  
+
+        # run the kalman filter and store the results
+        xs, cov = [], []
+        for z in zs:
+            kf.predict() #predicts next position
+            kf.update(z) #takes next measurement, updates position
+            xs.append(kf.x) #stores result
+            cov.append(kf.P) #stores result
+
+        xs, cov = np.array(xs), np.array(cov)
+        return xs, cov
+
+    df = df.copy()
+    results = {}
+    for column in df.columns:
+        if column.startswith('b'):
+            zs = df[column].values
+            xs, cov = run(x, P, R, Q, dt=dt, zs=zs)
+            results[column] = xs[:, 0]  # store the position estimates
+
+    # Add the results to the dataframe, replacing the original data
+    for column, values in results.items():
+        df[column] = values
+
+    return df
+
 # Plots the abolsute error of the measurements compared to the ground truth
 def absError(measurements, title="", gt="jan17-groundtruth.csv", plot=False):
     measurements = measurements.copy()
@@ -233,6 +303,9 @@ def processData(filename, tests):
     if list(initalDf.columns) != required_headers:
         # Add the required headers
         initalDf.columns = required_headers
+
+    #remove error messages from data
+    initalDf = cleanup_file(initalDf)
 
     # Ensure all values are floats/ints and not strings
     for column in initalDf.columns:
@@ -262,7 +335,7 @@ def processData(filename, tests):
     # Return a list of all the dataframes we created, final df is [-1]
     return final
 
-def plot1d(dfs, subdir, plot=True):
+def plot1d(dfs, plot=True):
     """
     Plots 1d charts of each beacon at each step in the ppp
     """
@@ -287,11 +360,11 @@ def plot1d(dfs, subdir, plot=True):
         plt.title(f'{beacon} Distance Over Time')
         plt.legend()
         plt.grid()
-        plt.savefig(os.path.join(os.getcwd(), f'charts/{beacon}_distance({subdir}).png'))
+        plt.savefig(os.path.join(os.getcwd(), f'charts/{beacon}_distance.png'))
         if plot: plt.show()
         plt.close()
 
-def plotPlayers(data, beacons, subdir, plot=True):
+def plotPlayers(data, beacons, plot=True):
     """
     Plots the players' movements and 1d charts of the players' distances from each beacon, saves all plots to /charts
     """
@@ -394,7 +467,7 @@ def plotPlayers(data, beacons, subdir, plot=True):
     plt.title(f'Player Movement Path | {title}')
     plt.legend()
     plt.grid()
-    plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_path({subdir}).png'))
+    plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_path.png'))
     if plot: plt.show()
     plt.close()
 
@@ -409,23 +482,24 @@ def main():
     # Submit the tests we want to run on our data in order [("testName", testFunction)]
     # ("Distance Correction", distanceCorrection)
     # ("EMA", smoothData)
-    # ("Kalman Filter", pipelineKalman)
+    # ("Kalman Filter", pipelineKalman) - doesn't work yet
+    # ("Kalman Filter", kalmanFilter)
     # ("Outlier Removal", removeOutliers)
+    # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Distance Correction", distanceCorrection)]
-    filenames = ["standing still.csv"]
+    filenames = ["feb9/2-9-test3-ftm.log"]
 
     for name in filenames:
-        csv_filename = f"/Users/cullenbaker/school/comps/bluetooth-tracking-ultimate/data/{name}"
+        #csv_filename = f"/Users/cullenbaker/school/comps/bluetooth-tracking-ultimate/data/{name}"
         script_dir = os.path.dirname(os.path.abspath(__file__)) 
         csv_filename = os.path.join(script_dir, "data", name)
         dfs = processData(csv_filename,tests)
 
         # Plot the 1d charts
-        plot1d(dfs, plot=False, subdir=name)
+        plot1d(dfs, plot=True)
 
         # Compare to GT Data
-        GT_File = "UWB-GT-Feb5.csv"
-        gt = loadData(os.path.join(script_dir, "data", GT_File))
+        gt = loadData("GroundyTruthy.csv")
         for df in dfs:
             print(f"\nAnalyzing {df[0]}")
             analyze_ftm_data(df[1], gt, title=df[0], plot=False)
@@ -434,9 +508,9 @@ def main():
         print(dfs)
 
         # Plot the final DFs
-        beaconPositions = np.array([[18, 0], [18, 12], [0, 0], [0, 12]])
+        beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
         for d in dfs:
-            plotPlayers(d, beaconPositions, plot=False, subdir=name)
+            plotPlayers(d, beaconPositions, plot=False)
 
     
 
