@@ -143,13 +143,12 @@ void loop() {
       WiFi.disconnect();
     }
   }
-
-  // Serial.printf("b1:{d:%d,ax:%d,ay:%d,az:%d} b2:{d:%d,ax:%d,ay:%d,az:%d} b3:{d:%d,ax:%d,ay:%d,az:%d}",
-  //             curMessage.CollectedBeaconData[0].FTMdist,curMessage.CollectedBeaconData[0].xaccel,curMessage.CollectedBeaconData[0].yaccel,curMessage.CollectedBeaconData[0].zaccel,
-  //             curMessage.CollectedBeaconData[1].FTMdist,curMessage.CollectedBeaconData[1].xaccel,curMessage.CollectedBeaconData[1].yaccel,curMessage.CollectedBeaconData[1].zaccel,
-  //             curMessage.CollectedBeaconData[2].FTMdist,curMessage.CollectedBeaconData[2].xaccel,curMessage.CollectedBeaconData[2].yaccel,curMessage.CollectedBeaconData[2].zaccel); //debug
-  // Serial.println();
   curMessage.timestamp = millis();
+  // Output for debugging:
+  // Serial.printf("%lu,%d,%d,%d,%d,%d,%d,%d",curMessage.timestamp,curMessage.CollectedBeaconData[0].FTMdist,curMessage.CollectedBeaconData[1].FTMdist,curMessage.CollectedBeaconData[2].FTMdist,curMessage.CollectedBeaconData[3].FTMdist,
+  //                 curMessage.xaccel,curMessage.yaccel,curMessage.zaccel); //note: currently, not reporting RSSI, but this could be added in the future
+  //   Serial.println();
+  
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&curMessage, sizeof(curMessage));  // sending our message to the recorder beacon via espnow
   delay(30);
   result = esp_now_send(broadcastAddress, (uint8_t *)&curMessage, sizeof(curMessage));  // redundancy message. won't actually be printed, as only novel timestamps are printed

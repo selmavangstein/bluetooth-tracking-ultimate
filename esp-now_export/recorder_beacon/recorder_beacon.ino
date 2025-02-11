@@ -52,8 +52,8 @@ void loop() {
     //             myData.CollectedBeaconData[0].FTMdist,myData.CollectedBeaconData[0].xaccel,myData.CollectedBeaconData[0].yaccel,myData.CollectedBeaconData[0].zaccel,
     //             myData.CollectedBeaconData[1].FTMdist,myData.CollectedBeaconData[1].xaccel,myData.CollectedBeaconData[1].yaccel,myData.CollectedBeaconData[1].zaccel,
     //             myData.CollectedBeaconData[2].FTMdist,myData.CollectedBeaconData[2].xaccel,myData.CollectedBeaconData[2].yaccel,myData.CollectedBeaconData[2].zaccel);
-    Serial.printf("%lu,%d,%d,%d,%d,%d,%d,%d",myData.timestamp,myData.CollectedBeaconData[0].FTMdist,myData.CollectedBeaconData[1].FTMdist,myData.CollectedBeaconData[2].FTMdist,myData.CollectedBeaconData[3].FTMdist,
-                  myData.xaccel,myData.yaccel,myData.zaccel); //note: currently, not reporting RSSI, but this could be added in the future
+    Serial.printf("%lu,%f,%f,%f,%f,%f,%f,%f",myData.timestamp,(float)myData.CollectedBeaconData[0].FTMdist/100.0,(float)myData.CollectedBeaconData[1].FTMdist/100.0,(float)myData.CollectedBeaconData[2].FTMdist/100.0,(float)myData.CollectedBeaconData[3].FTMdist/100.0,
+                  (float)myData.xaccel/100.0,(float)myData.yaccel/100.0,(float)myData.zaccel/100.0); //note: currently, not reporting RSSI, but this could be added in the future
     Serial.println();
   }
   
