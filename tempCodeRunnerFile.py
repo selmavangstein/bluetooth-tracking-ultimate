@@ -1,2 +1,1 @@
-ta[0]
-    # df = data[
+calculate_abs_error
