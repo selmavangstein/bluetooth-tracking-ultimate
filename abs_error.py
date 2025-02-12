@@ -16,7 +16,7 @@ def interpolate_groundtruth(groundtruth, measurement_timestamps):
 
 def calculate_abs_error(groundtruth, measurements):
 
-    measurements[['b1d','b2d','b3d','b4d']] /= 100
+    #measurements[['b1d','b2d','b3d','b4d']] /= 100
 
     measurements['timestamp'] = pd.to_datetime(measurements['timestamp'], format="%H:%M:%S.%f")
 

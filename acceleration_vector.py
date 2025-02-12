@@ -41,7 +41,7 @@ def find_acceleration_magnitude(df):
     xa = df['xa']
     ya = df['ya']
     za = df['za']
-    acceleration_magnitudes = np.sqrt((xa - 9.8)**2 + ya**2 + za**2) #in cm's not m's 
+    acceleration_magnitudes = np.sqrt((xa - 9.8)**2 + ya**2 + za**2)
      #subtract downwards accel. Assuming g is always straight down. This is not the case though - need some low pass filter
     df['ta'] = acceleration_magnitudes
     return df
