@@ -11,7 +11,8 @@ Uses a pandas df to store the data, and a matplotlib animation to animate the da
 
 from analyze_ftm_data import analyze_ftm_data
 from abs_error import *
-from kalman_filter_acc_bound import pipelineKalman
+from kalman_filter_pos_vel_acc import pipelineKalman
+#from kalman_filter_acc_bound import pipelineKalman
 
 import pandas as pd
 import numpy as np
@@ -307,6 +308,7 @@ def processData(filename, tests):
     #remove error messages from data
     initalDf = cleanup_file(initalDf)
 
+
     # Ensure all values are floats/ints and not strings
     for column in initalDf.columns:
         if initalDf[column].dtype == 'object':
@@ -487,7 +489,7 @@ def main():
     # ("Outlier Removal", removeOutliers)
     # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Distance Correction", distanceCorrection)]
-    filenames = ["feb9/2-9-test3-uwb.csv"]
+    filenames = ["ObstacleTest.csv"]
 
     for name in filenames:
         #csv_filename = f"/Users/cullenbaker/school/comps/bluetooth-tracking-ultimate/data/{name}"
@@ -499,7 +501,7 @@ def main():
         plot1d(dfs, plot=False)
 
         # Compare to GT Data
-        gt_filename = "feb9/2-9-test3-groundtruth.csv"
+        gt_filename = "GT-obstacletest-UWB-feb5.csv"
         gt_path = os.path.join(script_dir, "data", gt_filename)
         gt = loadData(gt_path)
         for df in dfs:

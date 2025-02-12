@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Load CSV file
-df = pd.read_csv("data/standing still.csv")
+df = pd.read_csv("data/feb9/2-9-standstill-ftm.csv")
 
 print("TESTING VARIANCE")
 # Compute variance of the 'distance' column

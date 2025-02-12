@@ -39,9 +39,9 @@ def kalman_filter(zs, ta, times, smoothing=True):
 
     dt = average_difference
     x = np.array([zs[0], 0]) #initial state.
-    P = np.diag([5, 5]) #initial state uncertainty 
+    P = np.diag([.2, 5.]) #initial state uncertainty 
     #(velocity p should be max 9. If we make sure they are held still for a few seconds at initialization, we can lower it to like 1)
-    Q = Q_discrete_white_noise(dim=2, dt=dt, var=20*dt) #process noise. Used change high bound for max accel. times dt. Might lower because model isn't great, so must trust measurements more.
+    Q = Q_discrete_white_noise(dim=2, dt=dt, var=1*dt) #process noise. Used change high bound for max accel. times dt. Might lower because model isn't great, so must trust measurements more.
     R = np.array([[0.2]]) #measurement covariance matrix /sensor variance. Use variance testing to decide this
 
     f = pos_vel_filter(x, P, R, Q, dt)
