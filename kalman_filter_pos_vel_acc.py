@@ -48,6 +48,8 @@ def kalman_filter(zs, ta, times, smoothing=True):
 
     f = pos_vel_filter(x, P, R, Q, dt)
     s = Saver(f)
+    alpha = 0.1 #some variable used to control how reactive the R-update is
+    rolling_variance = R.copy()
     for i in range(0, len(zs)):
         #can change f.F here to reflect dt fluctuations.
         #generally worth it with fluctuations more than 10% from the mean
@@ -67,6 +69,11 @@ def kalman_filter(zs, ta, times, smoothing=True):
 
         f.update(zs[i])
         s.save()
+
+        """ if i > 0:
+            new_residual = s.y[-1]  # Last residual
+            rolling_variance = (1 - alpha) * rolling_variance + alpha * (new_residual**2)  # EWMA update
+            f.R = np.array([[float(rolling_variance)]])  # Update filter's R """
 
     s.to_array()
     xs = s.x
