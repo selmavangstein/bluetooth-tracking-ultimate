@@ -149,6 +149,7 @@ def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
     # Detect obstacles based on residual variance
     def detect_obstacles(data, residual_variance_threshold, window_time):
         residual_variances = data.rolling(window_time).apply(residual_variance, raw=True)
+        residual_variances.dropna(inplace=True)
         obstacles = residual_variances > residual_variance_threshold
         return obstacles
 
@@ -156,6 +157,10 @@ def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
     for column in df.columns:
         if not column.startswith('b'):
             continue
+        
+        # Dealing with NaN values
+        df[column] = pd.to_numeric(df[column], errors='coerce')
+        df[column] = df[column].ffill()
 
         df[f'{column}_obstacle_detected'] = detect_obstacles(df[column], residual_variance_threshold, window_time)
         adjusted_col_data = df[column].copy().astype(float)
