@@ -12,6 +12,7 @@ Uses a pandas df to store the data, and a matplotlib animation to animate the da
 from analyze_ftm_data import analyze_ftm_data
 from abs_error import *
 from kalman_filter_pos_vel_acc import pipelineKalman
+from report import *
 #from kalman_filter_acc_bound import pipelineKalman
 
 import pandas as pd
@@ -335,7 +336,7 @@ def processData(filename, tests):
     # Return a list of all the dataframes we created, final df is [-1]
     return final
 
-def plot1d(dfs, plot=True):
+def plot1d(dfs, plot=True, doc=None):
     """
     Plots 1d charts of each beacon at each step in the ppp
     """
@@ -360,9 +361,15 @@ def plot1d(dfs, plot=True):
         plt.title(f'{beacon} Distance Over Time')
         plt.legend()
         plt.grid()
-        plt.savefig(os.path.join(os.getcwd(), f'charts/{beacon}_distance.png'))
+        path = os.path.join(os.getcwd(), f'charts/{beacon}_distance.png')
+        plt.savefig(path)
+
+        if doc != None: 
+            add_section(doc, sectionName=f"1D {beacon}_distance", sectionText="", imgPath=path, caption=f'{beacon} Distance Over Time')
         if plot: plt.show()
         plt.close()
+
+    return path
 
 def plotPlayers(data, beacons, plot=True):
     """
@@ -467,13 +474,17 @@ def plotPlayers(data, beacons, plot=True):
     plt.title(f'Player Movement Path | {title}')
     plt.legend()
     plt.grid()
-    plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_path.png'))
+    path = os.path.join(os.getcwd(), f'charts/{title}_path.png')
+    plt.savefig(path)
     if plot: plt.show()
     plt.close()
+
+    return path
 
 
 
 def main():
+
     # clear charts
     for f in os.listdir(os.path.join(os.getcwd(), 'charts')):
         os.remove(os.path.join(os.getcwd(), 'charts', f))
@@ -490,31 +501,41 @@ def main():
     filenames = ["ObstacleTest.csv"]
 
     for name in filenames:
+        # start report
+        doc = Document()
+        gen_title(doc, author=name)
+
         #csv_filename = f"/Users/cullenbaker/school/comps/bluetooth-tracking-ultimate/data/{name}"
         script_dir = os.path.dirname(os.path.abspath(__file__)) 
         csv_filename = os.path.join(script_dir, "data", name)
-        dfs = processData(csv_filename,tests)
+        dfs = processData(csv_filename, tests)
 
         # Plot the 1d charts
-        plot1d(dfs, plot=False)
-
+        imgPath = plot1d(dfs, plot=False, doc=doc)
+        
         # Compare to GT Data
         gt_filename = "GT-obstacletest-UWB-feb5.csv"
         gt_path = os.path.join(script_dir, "data", gt_filename)
         gt = loadData(gt_path)
+        i = 0
         for df in dfs:
             print(f"\nAnalyzing {df[0]}")
-            analyze_ftm_data(df[1], gt, title=df[0], plot=False)
+            imgPath, text = analyze_ftm_data(df[1], gt, title=df[0], plot=False)
+            add_section(doc, sectionName=f"{df[0]} - Ground Truth", sectionText=text, imgPath=imgPath, caption=f"{df[0]} Measured vs GT Distance", imgwidth=0.7) # image width needs to be lower fo rGT so it fits on page
             absError(df[1], title=df[0], plot=False)
+            i += 1
 
         #print(dfs)
 
         # Plot the final DFs
         beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
         for d in dfs:
-            plotPlayers(d, beaconPositions, plot=False)
+            imgPath = plotPlayers(d, beaconPositions, plot=False)
+            add_section(doc, sectionName=d[0], sectionText="", imgPath=imgPath, caption="Player Movement Path")
+
+        # output doc as pdf
+        gen_pdf(doc, name+"_report")
 
     
-
 if __name__ == "__main__":
     main()

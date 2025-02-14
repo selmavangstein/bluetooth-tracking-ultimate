@@ -25,6 +25,7 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, tit
          - green x => merged measured points
       6) Save merged to "merged_results.csv"
     """
+    GTData = ""
     df_meas = df_meas.copy()
 
     # 1) Parse timestamps with "HH:MM:SS.sss" if needed
@@ -83,6 +84,7 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, tit
         mae  = df_merged[err_col].abs().mean()
         rmse = np.sqrt((df_merged[err_col]**2).mean())
         print(f"Anchor {anchor_id}: MAE={mae:.3f} m, RMSE={rmse:.3f} m")
+        GTData += f"Anchor {anchor_id}: MAE={mae:.3f} m, RMSE={rmse:.3f} m\n"
 
     # 5) Plot lines
     fig, axes = plt.subplots(nrows=len(meas_beacon_cols), ncols=1,
@@ -121,7 +123,8 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, tit
 
     axes[-1].set_xlabel("Time")
     plt.tight_layout()
-    plt.savefig(os.path.join(os.getcwd(), f'charts/{title}_gt.png'))
+    path = os.path.join(os.getcwd(), f'charts/{title}_gt.png')
+    plt.savefig(path)
     if plot: plt.show()
     plt.close()
 
@@ -129,7 +132,7 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, tit
     df_merged.to_csv("merged_results.csv", index=False)
     # print("Done! Results saved to 'merged_results.csv'.")
 
-    return df_merged
+    return path, GTData
 
 
 if __name__ == "__main__":
