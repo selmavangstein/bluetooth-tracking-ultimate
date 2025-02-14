@@ -534,7 +534,9 @@ def main():
             add_section(doc, sectionName=d[0], sectionText="", imgPath=imgPath, caption="Player Movement Path")
 
         # output doc as pdf
-        gen_pdf(doc, name+"_report")
+        pdf = False
+        if pdf:
+            gen_pdf(doc, name+"_report")
 
     
 if __name__ == "__main__":
