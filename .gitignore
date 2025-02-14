@@ -1,1 +1,5 @@
 *.png
+*.aux
+*.fdb_latexmk
+*.fls
+*.tex
