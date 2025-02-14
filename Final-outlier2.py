@@ -87,7 +87,7 @@ def removeOutliers_dp(df, window_size=20, residual_variance_threshold=0.8):
     
     return df
 
-def removeOutliers_ts(df, window_time='2000ms', residual_variance_threshold=0.8):
+def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
     """Removes outliers from a dataframe using a rolling residual variance threshold and standard deviation.
 
     Args:
@@ -157,7 +157,7 @@ def removeOutliers_ts(df, window_time='2000ms', residual_variance_threshold=0.8)
         if not column.startswith('b'):
             continue
 
-        df[f'{column}_obstacle_detected'] = detect_obstacles(df[column], residual_variance_threshold, time_window)
+        df[f'{column}_obstacle_detected'] = detect_obstacles(df[column], residual_variance_threshold, window_time)
         adjusted_col_data = df[column].copy().astype(float)
 
         for current_time in df.index:
