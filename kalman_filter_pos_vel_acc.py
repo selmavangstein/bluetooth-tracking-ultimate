@@ -5,6 +5,7 @@ from filterpy.kalman import KalmanFilter
 import pandas as pd
 from residualcheck import residualcheck
 import matplotlib.pyplot as plt
+from collections import deque
 
 from acceleration_vector import find_acceleration_magnitude
 
@@ -39,42 +40,109 @@ def kalman_filter(zs, ta, times, smoothing=True):
     times = pd.to_datetime(times)
     time_differences = times.diff()
     average_difference = time_differences.dt.total_seconds().mean()
-
     dt = average_difference
+
     x = np.array([zs[0], 0, 0]) #initial state.
     P = np.diag([.2, 9., 5.]) #initial state uncertainty 
-    Q = Q_discrete_white_noise(dim=3, dt=dt, var=100000*dt) #process noise.
+    Q = Q_discrete_white_noise(dim=3, dt=dt, var=20*dt) #process noise.
     R = np.array([[0.2]]) #measurement covariance matrix /sensor variance.
 
     f = pos_vel_filter(x, P, R, Q, dt)
     s = Saver(f)
-    alpha = 0.1 #some variable used to control how reactive the R-update is
+
+    #setting parameters for extra controls within the filter
+
+    #gating parameters
+    gating_threshold = 3 #how many std devs to consider an outlier
+    R_inflated = 50.0
+    inflation_steps = 5
+    inflation_steps_countdown = inflation_steps
+    R_original = R.copy()
+
+    #rolling window params
+    window_size = 10
+    residual_window = deque([], maxlen=window_size)
+    variance_threshold = 2.0  # tune this based on typical residual variance - FIND THIS
+
+    #EWMA params
+    alpha = 0.2 #some variable used to control how reactive the R-update is
     rolling_variance = R.copy()
-    for i in range(0, len(zs)):
-        #can change f.F here to reflect dt fluctuations.
-        #generally worth it with fluctuations more than 10% from the mean
-        #should then also update f.Q.
+
+    #some counts for testing purposes
+    delta_pos_too_high = 0
+    acc_too_high = 0
+    stdev_too_high = 0
+    residual_var_too_high = 0
+
+    for i in range(len(zs)):
+
         f.predict()
 
-        estimated_acc = abs(f.x[2])  # Assuming acceleration is the 3rd state variable (index 2)
-        if estimated_acc > ta[i]:  
-            f.x[2] = np.sign(f.x[2]) * ta[i]  # Scale down but keep direction
+        #clamp esitmated acceleration
+        estimated_acc = abs(f.x[2])
+        if estimated_acc > ta[i]:
+            acc_too_high += 1  
+            f.x[2] = np.sign(f.x[2]) * ta[i]
 
-        #uses the magnitude of the acceleration along with estimated velcoity as a max limit for position change
+        #uses the magnitude of the acceleration along with estimated velocity as a max limit for position change
+        z = zs[i]
+        """ 
         if i>=1:
-            max_pos_change = abs(f.x[1]) * dt + 0.5 *  ta[i]* dt**2
+            max_pos_change = abs(f.x[1]) * dt + 0.5 * ta[i]* dt**2
             predicted_change = abs(f.x[0] - zs[i-1])
             if predicted_change > max_pos_change:
-                f.x[0] = zs[i-1] + np.sign(f.x[1]) * max_pos_change
+                delta_pos_too_high +=1
+                #zs[i] = f.x[0]  #Replace measurement with model prediction - this worked horribly wrong.
+                z = zs[i-1] + np.sign(f.x[1]) * max_pos_change #clamp position change """
+                
 
-        f.update(zs[i])
+        #compute innovation and innovation covariance S
+        innovation = z - f.x[0] #innovation is difference between prediction and measurement
+        S = f.P[0, 0] + f.R[0, 0] #initial covariance plus current covariance
+        stdev = np.sqrt(S)
+
+        if abs(innovation) > gating_threshold * stdev:
+            stdev_too_high += 1
+
+            #Temporarily inflate R
+            f.R = R_original * R_inflated
+            inflation_steps_countdown = inflation_steps
+        else:
+            # If not an outlier, check if we are still in "inflated" mode
+            if inflation_steps_countdown > 0:
+                inflation_steps_countdown -= 1
+                if inflation_steps_countdown == 0:
+                    # revert to normal R
+                    f.R = R_original
+            else:
+                # normal operation
+                f.R = R_original
+
+        f.update(z)
         s.save()
 
-        """ if i > 0:
-            new_residual = s.y[-1]  # Last residual
-            rolling_variance = (1 - alpha) * rolling_variance + alpha * (new_residual**2)  # EWMA update
-            f.R = np.array([[float(rolling_variance)]])  # Update filter's R """
+        #if the variance in the residuals in a window is too high we inflate R
+        new_residual = s.y[-1]
+        residual_window.append(new_residual)
+        if len(residual_window) == window_size: #residual window has a max size, works as a queue
+            var_estimate = np.var(residual_window)
+            if var_estimate > variance_threshold:
+                residual_var_too_high += 1
+                # Another way to handle bursts of noise: inflate R
+                f.R = R_original * R_inflated
+                inflation_steps_countdown = inflation_steps
 
+
+        #dynamically updating R as we go - might not want this anymore, as outliers are handled above
+        #rolling_variance = (1 - alpha) * rolling_variance + alpha * (new_residual**2)  # EWMA update
+        #f.R = np.array([[float(rolling_variance)]])  # Update filter's R
+
+
+    print(f"Acceleration clamped: {acc_too_high}")
+    print(f"Position change clamped: {delta_pos_too_high}")
+    print(f"R inflated due to stdev: {stdev_too_high}")
+    print(f"R inflated due to residual var: {residual_var_too_high}")
+    
     s.to_array()
     xs = s.x
     covs = s.P
@@ -91,11 +159,12 @@ def pipelineKalman(df):
     df = find_acceleration_magnitude(df) # adds acceleration vectors to the df
 
     results = {}
+    #savers = []
     for column in df.columns:
         if column.startswith('b'):
             zs = df[column].values
             s, smooth_xs = kalman_filter(zs, df['ta'].values, df['timestamp'], smoothing=True)
-
+            #savers.append(s)
             xs = s.x
             results[column] = xs[:, 0]  # store the position estimates
 
@@ -105,4 +174,5 @@ def pipelineKalman(df):
         df[column] = values
 
     return df
+    #return df, savers
 
