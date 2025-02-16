@@ -364,27 +364,36 @@ def distanceCorrection(df):
     """
     Corrects the distance data in the dataframe using the data from the compass
     If the player moves more than 10m away from the beacon in a second then the data is incorrect and should be corrected
-    """
+    """   
     df = df.copy()  
 
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%H:%M:%S.%f')
+    dt = df['timestamp'].diff().dt.total_seconds()
     for column in df.columns:
         if not column.startswith('b'):
             continue
+        
+        outlier_count = 1000000
+        for i in range(10):
+            if outlier_count <= 1:
+                break
+            # Calculate the difference between consecutive measurements
+            df[f'{column}_vel'] = (df[column].diff()/dt).abs()
 
-        # Calculate the difference between consecutive measurements
-        df[f'{column}_diff'] = df[column].diff().abs()
+            # Identify the outliers where the difference is greater than 10 meters
+            outliers = df[f'{column}_vel'] > 9
+            outlier_count = outliers.sum()
+            print(f"Datapoints in {column}: ", len(df[column]))
+            print(f"distance corrections for {column}: ", outlier_count)
 
-        # Identify the outliers where the difference is greater than 10 meters
-        outliers = df[f'{column}_diff'] > 9
+            # Replace outliers with NaN
+            df.loc[outliers, column] = np.nan
 
-        # Replace outliers with NaN
-        df.loc[outliers, column] = np.nan
+            # Interpolate to fill NaN values
+            df[column].interpolate(method='linear', inplace=True)
 
-        # Interpolate to fill NaN values
-        df[column].interpolate(method='linear', inplace=True)
-
-        # Drop the temporary diff column
-        df.drop(columns=[f'{column}_diff'], inplace=True)
+            # Drop the temporary diff column
+            df.drop(columns=[f'{column}_vel'], inplace=True)  
 
     return df
 

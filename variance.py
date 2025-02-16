@@ -126,13 +126,13 @@ def velocity(df):
     v3 = diff3/dt
     v4 = diff4/dt
 
-    plt.figure()
+    """ plt.figure()
     plt.plot(df['timestamp'], v1)
     plt.plot(df['timestamp'], v2)
     plt.plot(df['timestamp'], v3)
     plt.plot(df['timestamp'], v4)
     plt.ylim(-30,30)
-    plt.show()
+    plt.show() """
 
     df = distanceCorrection(df)
     diff1 = df['b1d'].diff()
@@ -142,16 +142,16 @@ def velocity(df):
 
     dt = df['timestamp'].diff().dt.total_seconds()
 
-    v1 = diff1/dt
-    v2 = diff2/dt
-    v3 = diff3/dt
-    v4 = diff4/dt
+    v1p = diff1/dt
+    v2p = diff2/dt
+    v3p = diff3/dt
+    v4p = diff4/dt
 
     plt.figure()
-    plt.plot(df['timestamp'], v1)
-    plt.plot(df['timestamp'], v2)
-    plt.plot(df['timestamp'], v3)
-    plt.plot(df['timestamp'], v4)
+    plt.plot(df['timestamp'], v1-v1p)
+    plt.plot(df['timestamp'], v2-v2p)
+    plt.plot(df['timestamp'], v3-v3p)
+    plt.plot(df['timestamp'], v4-v4p)
     plt.ylim(-30,30)
     plt.show()
 
