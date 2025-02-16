@@ -5,8 +5,6 @@ def residualcheck(s, R):
     residual_variance = np.var(residuals)
 
     print(f"Residual Variance: {residual_variance}")
-    print(f"Current R: {R[0,0]}")  # Assuming R is scalar
-
     # Compare and adjust R if needed
     if residual_variance > R[0, 0]:
         print("R might be too low; consider increasing it.")
