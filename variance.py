@@ -155,5 +155,21 @@ def velocity(df):
     plt.ylim(-30,30)
     plt.show()
 
-df = pd.read_csv("data/ObstacleTest.csv")
-velocity(df)
+
+def average_absolute_error(df, gt):
+    diff1 = (df['b1d']-gt['b1d'])
+    diff2 = (df['b2d']-gt['b2d'])
+    diff3 = (df['b3d']-gt['b3d'])
+    diff4 = (df['b4d']-gt['b4d'])
+
+    print("Error1: ", diff1.mean())
+    print("Error2: ", diff2.mean())
+    print("Error3: ", diff3.mean())
+    print("Error4: ", diff4.mean())
+
+df = pd.read_csv("data/OverTheHeadTest.csv")
+gt = pd.read_csv("data/GT-overheadtest-UWB-feb5.csv")
+
+df = pd.read_csv("data/standing still.csv")
+#average_absolute_error(df,gt)
+systematic_error(df)

@@ -37,7 +37,7 @@ def loadData(filename):
     """
     return pd.read_csv(filename)
 
-def smoothData(df, window_size=25):
+def smoothData(df, window_size=5):
     """
     Smooths the data in the dataframe using Exponential Moving Average (EMA)
     """
@@ -360,7 +360,7 @@ def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
     df.reset_index(inplace=True)
     return df
 
-def distanceCorrection(df):
+def velocityClamping(df):
     """
     Corrects the distance data in the dataframe using the data from the compass
     If the player moves more than 10m away from the beacon in a second then the data is incorrect and should be corrected
@@ -482,6 +482,14 @@ def absError(measurements, title="", gt="jan17-groundtruth.csv", plot=False):
     plot_abs_error(filtered_data['timestamp'], filtered_data['abs_error'], mean_error, plot=plot, title=title)
 
     return filtered_data
+
+def distanceCorrection(df):
+    df = df.copy()  
+    for column in df.columns:
+        if not column.startswith('b'):
+            continue
+        df[column] = df[column]-0.8
+    return df
 
 def processData(filename, tests):
     # Load initial DF
@@ -687,8 +695,8 @@ def main():
     # ("Outlier Removal", removeOutliers_dp)
     # ("Outlier Removal", removeOutliers_ts)
     # ("Plot", plotPlayers)
-    tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Distance Correction", distanceCorrection)]
-    filenames = ["ObstacleTest.csv"]
+    tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
+    filenames = ["OverTheHeadTest.csv"]
 
     for name in filenames:
         # start report
@@ -704,7 +712,7 @@ def main():
         imgPath = plot1d(dfs, plot=False, doc=doc)
         
         # Compare to GT Data
-        gt_filename = "GT-obstacletest-UWB-feb5.csv"
+        gt_filename = "GT-overheadtest-UWB-feb5.csv"
         gt_path = os.path.join(script_dir, "data", gt_filename)
         gt = loadData(gt_path)
         i = 0
