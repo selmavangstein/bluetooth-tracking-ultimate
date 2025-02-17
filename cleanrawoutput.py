@@ -24,6 +24,8 @@ def clean(logFilePath, newFileNamePath):
             line = line.replace(" ", "")
             f.write(line)
 
+    return newFileNamePath
+
 if __name__ == "__main__":
     log = "/Users/cullenbaker/school/comps/bluetooth-tracking-ultimate/data/rawdataexample.log"
     new = "/Users/cullenbaker/school/comps/bluetooth-tracking-ultimate/data/rawdataexample.csv"
