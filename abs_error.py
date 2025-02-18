@@ -39,7 +39,7 @@ def plot_abs_error(timestamps, errors, title=""):
 
     for i, ax in enumerate(axes,1):
         ax.plot(timestamps, errors[i], label=f'Absolute Error Beacon {i}', marker='o')
-        ax.set_title(f'Absolute Error Over Time (Beacon {i})')
+        ax.set_title(f'Absolute Error for Beacon {i} Over Time ({title})')
         ax.set_ylabel('Absolute Error (m)')
         ax.grid(True)
         ax.legend()
@@ -51,7 +51,7 @@ def plot_abs_error(timestamps, errors, title=""):
 def plot_mean_abs_error(timestamps, mean_abs_error, title=""):
     plt.figure(figsize=(10, 6))
     plt.plot(timestamps, mean_abs_error, label='Mean Absolute Error Across Beacons', color='green', marker='x')
-    plt.title('Mean Absolute Error Across All Beacons Over Time')
+    plt.title(f'Mean Absolute Error Across All Beacons Over Time ({title})')
     plt.xlabel('Time')
     plt.ylabel('Mean Absolute Error (m)')
     plt.grid(True)
