@@ -467,20 +467,15 @@ def kalmanFilter(df, x=np.array([10.0, 0]), P=np.diag([30, 16]), R=np.array([[5.
     return df
 
 # Plots the abolsute error of the measurements compared to the ground truth
-def absError(measurements, title="", gt="jan17-groundtruth.csv", plot=False):
-    measurements = measurements.copy()
+def absError(groundtruth, measurements, title):
+    gt = groundtruth.copy()
+    measure = measurements.copy()
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))  
- 
-    datafile = os.path.join(script_dir, "data", gt)  
-    if not os.path.exists(datafile):
-        print(f"File not found: {datafile}")
-    groundtruth = pd.read_csv(datafile)
+    filtered_data, errors = calculate_abs_error(gt, measure)
 
-    filtered_data, mean_error = calculate_abs_error(groundtruth, measurements)
-
-    plot_abs_error(filtered_data['timestamp'], filtered_data['abs_error'], mean_error, plot=plot, title=title)
-
+    plot_abs_error(filtered_data['timestamp'], errors, title)
+    plot_mean_abs_error(filtered_data['timestamp'], filtered_data['mean_abs_error'], title)
+    
     return filtered_data
 
 def distanceCorrection(df):
@@ -721,7 +716,7 @@ def main():
             print(f"\nAnalyzing {df[0]}")
             imgPath, text = analyze_ftm_data(df[1], gt, title=df[0], plot=False)
             add_section(doc, sectionName=f"{df[0]} - Ground Truth", sectionText=text, imgPath=imgPath, caption=f"{df[0]} Measured vs GT Distance", imgwidth=0.7) # image width needs to be lower fo rGT so it fits on page
-            absError(df[1], title=df[0], plot=False)
+            absError(gt, df[1], title=df[0])
             i += 1
 
         # Plot GT 2d Data
