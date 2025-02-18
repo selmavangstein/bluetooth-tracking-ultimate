@@ -628,7 +628,8 @@ def plotPlayers(data, beacons, plot=True):
 
     for index, row in df.iterrows():
         if index == 0: continue # skip first row
-        distances = np.array([row[col] for col in df.columns if col.startswith('b')]) # div by 100 to convert to meters
+        distances = np.array([row[col] for col in sorted(df.columns) if col.startswith('b')]) # div by 100 to convert to meters
+        # distances = np.array()
         try:
             #calculate the position of the player based on a combo of three beacons
             position1 = trilaterate_one(beacons[[0, 1, 2]], distances[[0, 1, 2]])
@@ -723,10 +724,13 @@ def main():
             absError(df[1], title=df[0], plot=False)
             i += 1
 
-        #print(dfs)
+        # Plot GT 2d Data
+        # beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
+        beaconPositions = np.array([[15, 0], [15, 20], [0, 0], [0, 20]])
+        imgPath = plotPlayers(("Ground Truth", gt), beaconPositions, plot=False)
+        add_section(doc, sectionName="Ground Truth", sectionText="", imgPath=imgPath, caption="Ground Truth Player Movement Path")
 
         # Plot the final DFs
-        beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
         for d in dfs:
             imgPath = plotPlayers(d, beaconPositions, plot=False)
             add_section(doc, sectionName=d[0], sectionText="", imgPath=imgPath, caption="Player Movement Path")
