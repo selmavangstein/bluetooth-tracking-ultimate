@@ -33,7 +33,7 @@ def calculate_abs_error(groundtruth, measurements):
 
     return merged, errors
 
-def plot_abs_error(timestamps, errors, title=""):
+def plot_abs_error(timestamps, errors, title="", plot=False):
     # TODO: figure out a consistent cap for y-axis
     axes = plt.subplots(4,1, figsize=(10,12), sharex=True)[1]
 
@@ -45,10 +45,10 @@ def plot_abs_error(timestamps, errors, title=""):
         ax.legend()
     plt.xlabel('Time')
     plt.savefig(os.path.join(os.getcwd(), f'charts/{title}-abserror.png'))
-    plt.show()
+    if plot: plt.show()
     plt.close()
 
-def plot_mean_abs_error(timestamps, mean_abs_error, title=""):
+def plot_mean_abs_error(timestamps, mean_abs_error, title="", plot=False):
     plt.figure(figsize=(10, 6))
     plt.plot(timestamps, mean_abs_error, label='Mean Absolute Error Across Beacons', color='green', marker='x')
     plt.title(f'Mean Absolute Error Across All Beacons Over Time ({title})')
@@ -57,5 +57,5 @@ def plot_mean_abs_error(timestamps, mean_abs_error, title=""):
     plt.grid(True)
     plt.legend()
     plt.savefig(os.path.join(os.getcwd(), f'charts/{title}-meanabserror.png'))
-    plt.show()
+    if plot: plt.show()
     plt.close()

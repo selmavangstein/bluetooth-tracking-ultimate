@@ -467,14 +467,14 @@ def kalmanFilter(df, x=np.array([10.0, 0]), P=np.diag([30, 16]), R=np.array([[5.
     return df
 
 # Plots the abolsute error of the measurements compared to the ground truth
-def absError(groundtruth, measurements, title):
+def absError(groundtruth, measurements, title, plot=False):
     gt = groundtruth.copy()
     measure = measurements.copy()
 
     filtered_data, errors = calculate_abs_error(gt, measure)
 
-    plot_abs_error(filtered_data['timestamp'], errors, title)
-    plot_mean_abs_error(filtered_data['timestamp'], filtered_data['mean_abs_error'], title)
+    plot_abs_error(filtered_data['timestamp'], errors, title, plot=plot)
+    plot_mean_abs_error(filtered_data['timestamp'], filtered_data['mean_abs_error'], title, plot=plot)
     
     return filtered_data
 
@@ -692,9 +692,15 @@ def main():
     # ("Outlier Removal", removeOutliers_ts)
     # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
-    filenames = ["OverTheHeadTest.csv"]
+    filenames = ["feb9/2-9-test3-uwb.csv", "feb9/2-9-test3-ftm.csv"]
+
+    # show  plots or not?
+    show_plots = False
+    # output doc as pdf?
+    pdf = True
 
     for name in filenames:
+        
         # start report
         doc = Document()
         gen_title(doc, author=name)
@@ -705,35 +711,33 @@ def main():
         dfs = processData(csv_filename, tests)
 
         # Plot the 1d charts
-        imgPath = plot1d(dfs, plot=False, doc=doc)
+        imgPath = plot1d(dfs, plot=show_plots, doc=doc)
         
         # Compare to GT Data
-        gt_filename = "GT-overheadtest-UWB-feb5.csv"
+        gt_filename = "feb9/2-9-test3-groundtruth.csv"
         gt_path = os.path.join(script_dir, "data", gt_filename)
         gt = loadData(gt_path)
         i = 0
         for df in dfs:
             print(f"\nAnalyzing {df[0]}")
-            imgPath, text = analyze_ftm_data(df[1], gt, title=df[0], plot=False)
+            imgPath, text = analyze_ftm_data(df[1], gt, title=df[0], plot=show_plots)
             add_section(doc, sectionName=f"{df[0]} - Ground Truth", sectionText=text, imgPath=imgPath, caption=f"{df[0]} Measured vs GT Distance", imgwidth=0.7) # image width needs to be lower fo rGT so it fits on page
-            absError(gt, df[1], title=df[0])
+            absError(gt, df[1], title=df[0], plot=show_plots)
             i += 1
 
         # Plot GT 2d Data
         # beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
         beaconPositions = np.array([[15, 0], [15, 20], [0, 0], [0, 20]])
-        imgPath = plotPlayers(("Ground Truth", gt), beaconPositions, plot=False)
+        imgPath = plotPlayers(("Ground Truth", gt), beaconPositions, plot=show_plots)
         add_section(doc, sectionName="Ground Truth", sectionText="", imgPath=imgPath, caption="Ground Truth Player Movement Path")
 
         # Plot the final DFs
         for d in dfs:
-            imgPath = plotPlayers(d, beaconPositions, plot=False)
+            imgPath = plotPlayers(d, beaconPositions, plot=show_plots)
             add_section(doc, sectionName=d[0], sectionText="", imgPath=imgPath, caption="Player Movement Path")
 
-        # output doc as pdf
-        pdf = False
         if pdf:
-            gen_pdf(doc, name+"_report")
+            gen_pdf(doc, name.split("/")[-1]+"_report")
 
     
 if __name__ == "__main__":
