@@ -5,7 +5,7 @@ import numpy as np
 
 def interpolate_groundtruth(groundtruth, measurement_timestamps):
 
-    groundtruth['timestamp'] = pd.to_datetime(groundtruth['timestamp'], format="%H:%M:%S")
+    groundtruth['timestamp'] = pd.to_datetime(groundtruth['timestamp'], format="%H:%M:%S.%f")
     measurement_timestamps = pd.to_datetime(measurement_timestamps, format="%H:%M:%S.%f")
 
     groundtruth = groundtruth.set_index('timestamp')
@@ -15,65 +15,47 @@ def interpolate_groundtruth(groundtruth, measurement_timestamps):
     return groundtruth
 
 def calculate_abs_error(groundtruth, measurements):
-
-    #measurements[['b1d','b2d','b3d','b4d']] /= 100
-
     measurements['timestamp'] = pd.to_datetime(measurements['timestamp'], format="%H:%M:%S.%f")
 
     groundtruth = interpolate_groundtruth(groundtruth, measurements['timestamp'])
-    merged = pd.merge(groundtruth, measurements, on='timestamp')
+    groundtruth_rename = groundtruth.rename(columns={
+        'b1d': 'b1d_gt', 'b2d': 'b2d_gt', 'b3d': 'b3d_gt', 'b4d': 'b4d_gt'
+    })
 
-    merged['abs_error'] = np.abs(merged['b3d'] - merged['d3'])
-    merged['abs_error_percentage'] = (merged['abs_error'] / merged['d3']) * 100
+    merged = pd.merge(groundtruth_rename, measurements, on='timestamp')
 
-    mean_error = merged['abs_error'].mean()
-    print(f"Mean Absolute Error: {mean_error:.2f} m")
+    errors = {}
+    for i in range(1,5):
+        merged[f'abs_error_b{i}'] = np.abs(merged[f'b{i}d_gt'] - merged[f'b{i}d'])
+        errors[i] = merged[f'abs_error_b{i}']
 
-    return merged, mean_error
+    merged['mean_abs_error'] = merged[[f'abs_error_b{i}' for i in range (1,5)]].mean(axis=1)
 
-def plot_abs_error(timestamps, abs_error, mean_error, plot=False, title=""):
+    return merged, errors
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(timestamps, abs_error, label='Absolute Error', color='blue', marker='o')
-    plt.title(f'Absolute Error Over Time - {title}')
+def plot_abs_error(timestamps, errors, title="", plot=False):
+    # TODO: figure out a consistent cap for y-axis
+    axes = plt.subplots(4,1, figsize=(10,12), sharex=True)[1]
+
+    for i, ax in enumerate(axes,1):
+        ax.plot(timestamps, errors[i], label=f'Absolute Error Beacon {i}', marker='o')
+        ax.set_title(f'Absolute Error for Beacon {i} Over Time ({title})')
+        ax.set_ylabel('Absolute Error (m)')
+        ax.grid(True)
+        ax.legend()
     plt.xlabel('Time')
-    plt.ylabel('Absolute Error (m)')
-    plt.grid(True)
-    plt.legend()
-
-    text_box = f"Mean Absolute Error: {mean_error: .2f} m"
-    plt.figtext(0.15, 0.85, text_box, fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
-
     plt.savefig(os.path.join(os.getcwd(), f'charts/{title}-abserror.png'))
     if plot: plt.show()
     plt.close()
 
-def plot_abs_error_percentage(timestamps, abs_error_percentage):
+def plot_mean_abs_error(timestamps, mean_abs_error, title="", plot=False):
     plt.figure(figsize=(10, 6))
-    plt.plot(timestamps, abs_error_percentage, label='Absolute Error Percentage', color='green', marker='x')
-    plt.title('Absolute Error Percentage Over Time')
+    plt.plot(timestamps, mean_abs_error, label='Mean Absolute Error Across Beacons', color='green', marker='x')
+    plt.title(f'Mean Absolute Error Across All Beacons Over Time ({title})')
     plt.xlabel('Time')
-    plt.ylabel('Absolute Error Percentage')
+    plt.ylabel('Mean Absolute Error (m)')
     plt.grid(True)
     plt.legend()
-    plt.show()
-
-if __name__ == "__main__":
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))  
-
-    datafile = os.path.join(script_dir, "data", "4beaconv1.csv")
-    if not os.path.exists(datafile):
-        print(f"File not found: {datafile}")
-    measurements = pd.read_csv(datafile)
- 
-    datafile = os.path.join(script_dir, "data", "jan17-groundtruth.csv")  
-    if not os.path.exists(datafile):
-        print(f"File not found: {datafile}")
-    groundtruth = pd.read_csv(datafile)
-
-    filtered_data, mean_error = calculate_abs_error(groundtruth, measurements)
-    # print(filtered_data)
-
-    plot_abs_error(filtered_data['timestamp'], filtered_data['abs_error'], mean_error)
-    # plot_abs_error_percentage(filtered_data['timestamp'], filtered_data['abs_error_percentage'])
+    plt.savefig(os.path.join(os.getcwd(), f'charts/{title}-meanabserror.png'))
+    if plot: plt.show()
+    plt.close()

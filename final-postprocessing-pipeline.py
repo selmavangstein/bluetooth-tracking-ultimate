@@ -17,6 +17,7 @@ from final_trilateration import trilaterate
 from report import *
 #from kalman_filter_acc_bound import pipelineKalman
 
+import joblib
 import pandas as pd
 import numpy as np
 import pandas as pd
@@ -50,7 +51,73 @@ def smoothData(df, window_size=5):
             continue
         smoothed_df[column] = df[column].ewm(span=window_size, adjust=False).mean()
     return smoothed_df
+
+
+def twoD_correction(locations, timestamps, acc, ema_window=10):
+    """
+    Attempts to correct the 2d trilateration data if there are big jumps
+    Almost like another kalman filter (but 2d)
+
+    takes in a list like : [[x,y], [x1,y1], ... [xn,yn]]
+    """
+
+    # Store the corrected data
+    corrections = [locations[0]]
+
+    # calculate an ema of the data
+    # convert to a pandas dataframe
+    locations_df = pd.DataFrame(locations, columns=['x', 'y'])
+
+    # comvert timestamps to numbers
+    timestamps = [pd.Timestamp(ts).timestamp() for ts in timestamps]
+
+    corrected = 0
+    total = 0
+
+    # Loop through the data
+    for i in range(1, len(locations)):
+        # if the distance between two points is greater than 10m
+        # get the time difference between the points
+        time_diff = (timestamps[i] - timestamps[i-1])
         
+        # time_diff = (timestamps[i] - timestamps[i-1]).total_seconds()
+        distance_diff = np.linalg.norm(locations[i] - corrections[i-1])
+
+        prev_distance_diff = np.linalg.norm(locations[i-1] - corrections[i-1]) * time_diff
+
+        scaler = time_diff * 10
+
+        if distance_diff > scaler:
+            # update ema
+            correction_df = pd.DataFrame(corrections, columns=['x', 'y'])
+            ema = correction_df.ewm(span=ema_window, adjust=False).mean()
+            ema = ema[['x', 'y']].values
+
+            # calculate the 10m circle around the previous point
+            circle = np.array([corrections[i-1] + np.array([scaler * np.cos(theta), scaler * np.sin(theta)]) for theta in np.linspace(0, 2 * np.pi, 100)]) # mostly used for plotting
+            correct_circle = np.array([corrections[i-1] + np.array([prev_distance_diff * np.cos(theta), prev_distance_diff * np.sin(theta)]) for theta in np.linspace(0, 2 * np.pi, 100)]) # calc new distanace
+            closest_point = min(correct_circle, key=lambda point: np.linalg.norm(point - ema[i-1]))
+
+            corrections.append(closest_point)
+            """quickly plot the correction for testing"""
+            # plt.plot(corrections[i-1][0], corrections[i-1][1], 'yo', label='Prev Point')
+            # plt.plot(locations[i][0], locations[i][1], 'bo', label='Current Point')
+            # plt.plot(circle[:, 0], circle[:, 1], label='Impossible Circle')
+            # plt.plot(ema[i-1][0], ema[i-1][1], 'ro', label='EMA Point')
+            # plt.plot(closest_point[0], closest_point[1], 'go', label='Corrected Point (what is added)')
+            # plt.legend()
+            # plt.show()
+            # plt.close()
+            corrected += 1
+            total += 1
+
+        else:
+            total += 1
+            corrections.append(locations[i])
+
+    print(f"Corrected {corrected} out of {total} points")
+    return np.array(corrections)
+
 def pipelineRemoveOutliers(df, window_size=20, residual_variance_threshold=0.8):
     """Removes outliers from a dataframe using a rolling residual variance threshold and standard deviation.
 
@@ -182,7 +249,6 @@ def removeOutliers(df, window_size=10, residual_variance_threshold=1.5):
     df = df.loc[:, :'za']
 
     return df
-
 
 def removeOutliers_dp(df, window_size=20, residual_variance_threshold=0.8):
     """Removes outliers from a dataframe using a rolling residual variance threshold and standard deviation.
@@ -469,20 +535,15 @@ def kalmanFilter(df, x=np.array([10.0, 0]), P=np.diag([30, 16]), R=np.array([[5.
     return df
 
 # Plots the abolsute error of the measurements compared to the ground truth
-def absError(measurements, title="", gt="jan17-groundtruth.csv", plot=False):
-    measurements = measurements.copy()
+def absError(groundtruth, measurements, title, plot=False):
+    gt = groundtruth.copy()
+    measure = measurements.copy()
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))  
- 
-    datafile = os.path.join(script_dir, "data", gt)  
-    if not os.path.exists(datafile):
-        print(f"File not found: {datafile}")
-    groundtruth = pd.read_csv(datafile)
+    filtered_data, errors = calculate_abs_error(gt, measure)
 
-    filtered_data, mean_error = calculate_abs_error(groundtruth, measurements)
-
-    plot_abs_error(filtered_data['timestamp'], filtered_data['abs_error'], mean_error, plot=plot, title=title)
-
+    plot_abs_error(filtered_data['timestamp'], errors, title, plot=plot)
+    plot_mean_abs_error(filtered_data['timestamp'], filtered_data['mean_abs_error'], title, plot=plot)
+    
     return filtered_data
 
 def distanceCorrection(df):
@@ -578,6 +639,21 @@ def plotPlayers(data, beacons, plot=True):
     
     # formated like p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y ...
     finalPlayerPositions = pd.DataFrame()
+
+    # tried predicting with ML model but didn't work great
+    # def predict_with_model(input_data):
+    #     # Load the model
+    #     model_filepath = "/Users/cullenbaker/school/comps/bluetooth-tracking-ultimate/random_forest_model.pkl"
+    #     model = joblib.load(model_filepath)
+        
+    #     # Ensure input_data is a DataFrame
+    #     if not isinstance(input_data, pd.DataFrame):
+    #         input_data = pd.DataFrame(input_data)
+        
+    #     # Make predictions
+    #     predictions = model.predict(input_data)
+        
+    #     return predictions
   
     def trilaterate_one(beacons, distances):
         """
@@ -621,11 +697,14 @@ def plotPlayers(data, beacons, plot=True):
     # calculate the players positions based on the best trilateration data (three circle selma example, closest three circles)
     # calc based on averages of all combinations of 3 beacons
     # calc based on most likely next position based on acc data
+    timestamps = df['timestamp']
+    # acc_data = df[['xa', 'ya', 'za']]
     player_positions = []
     player_positions1 = []
     player_positions2 = []
     player_positions3 = []
     player_positions4 = []
+    # ml_postions = []
 
 
     for index, row in df.iterrows():
@@ -638,12 +717,16 @@ def plotPlayers(data, beacons, plot=True):
             position2 = trilaterate_one(beacons[[0, 1, 3]], distances[[0, 1, 3]])
             position3 = trilaterate_one(beacons[[0, 2, 3]], distances[[0, 2, 3]])
             position4 = trilaterate_one(beacons[[1, 2, 3]], distances[[1, 2, 3]])
+            avg = np.mean([position1, position2, position3, position4], axis=0)
+            # position_row = pd.DataFrame([np.concatenate((avg, position1, position2, position3, position4))], columns=['x', 'y', 'x1', 'y1', 'x2', 'y2', 'x3', 'y3', 'x4', 'y4'])
+            # position_ml = predict_with_model(position_row)[0]
             # save avg, and individual positions
-            player_positions.append(np.mean([position1, position2, position3, position4], axis=0))
+            player_positions.append(avg)
             player_positions1.append(position1)
             player_positions2.append(position2)
             player_positions3.append(position3)
             player_positions4.append(position4)
+            # ml_postions.append(position_ml)
 
         except ValueError as e:
             print(f"Error at index {index}: {e}")
@@ -652,13 +735,31 @@ def plotPlayers(data, beacons, plot=True):
             player_positions2.append([np.nan, np.nan])
             player_positions3.append([np.nan, np.nan])
             player_positions4.append([np.nan, np.nan])
+            # ml_postions.append([np.nan, np.nan])
 
+    # Add locations to a df and save to csv in case we want to analyze later
+    finalPlayerPositions['timestamp'] = df['timestamp'][1:]
+    finalPlayerPositions['x'] = [pos[0] for pos in player_positions]
+    finalPlayerPositions['y'] = [pos[1] for pos in player_positions]
+    finalPlayerPositions['x1'] = [pos[0] for pos in player_positions1]
+    finalPlayerPositions['y1'] = [pos[1] for pos in player_positions1]
+    finalPlayerPositions['x2'] = [pos[0] for pos in player_positions2]
+    finalPlayerPositions['y2'] = [pos[1] for pos in player_positions2]
+    finalPlayerPositions['x3'] = [pos[0] for pos in player_positions3]
+    finalPlayerPositions['y3'] = [pos[1] for pos in player_positions3]
+    finalPlayerPositions['x4'] = [pos[0] for pos in player_positions4]
+    finalPlayerPositions['y4'] = [pos[1] for pos in player_positions4]
+    finalPlayerPositions.to_csv(f'player_positions_{title}.csv', index=False)
 
     player_positions = np.array(player_positions)
     player_positions1 = np.array(player_positions1)
     player_positions2 = np.array(player_positions2)
     player_positions3 = np.array(player_positions3)
     player_positions4 = np.array(player_positions4)
+    corrected_positions = np.array(twoD_correction(player_positions.copy(), timestamps, 0))
+    # ml_postions = np.array(ml_postions)
+
+  
 
     df = trilaterate(df, beacons)
     if title != "Ground Truth":
@@ -666,18 +767,21 @@ def plotPlayers(data, beacons, plot=True):
 
     # Plot player positions
     plt.figure(figsize=(10, 6))
-    plt.plot(player_positions1[:, 0], player_positions1[:, 1], '.-', label='Player Path 1', alpha=0.5)
-    plt.plot(player_positions2[:, 0], player_positions2[:, 1], '.-', label='Player Path 2', alpha=0.5)
-    plt.plot(player_positions3[:, 0], player_positions3[:, 1], '.-', label='Player Path 3', alpha=0.5)
-    plt.plot(player_positions4[:, 0], player_positions4[:, 1], '.-', label='Player Path 4', alpha=0.5)
-    plt.plot(player_positions[:, 0], player_positions[:, 1], '.-', label='Player Path') # plot the avg last
+    plt.plot(player_positions1[:, 0], player_positions1[:, 1], 'o-', label='Player Path 1', alpha=0.5)
+    plt.plot(player_positions2[:, 0], player_positions2[:, 1], 'o-', label='Player Path 2', alpha=0.5)
+    plt.plot(player_positions3[:, 0], player_positions3[:, 1], 'o-', label='Player Path 3', alpha=0.5)
+    plt.plot(player_positions4[:, 0], player_positions4[:, 1], 'o-', label='Player Path 4', alpha=0.5)
+    plt.plot(player_positions[:, 0], player_positions[:, 1], 'o-', label='Player Path') # plot the avg last
     plt.plot(df['pos_x'], df['pos_y'], '.-', label='new trilateration')
+    plt.plot(corrected_positions[:, 0], corrected_positions[:, 1], 'o-', label='Final (Corrected) Player Path', alpha=0.5)
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
     plt.ylabel('Y Position')
     plt.title(f'Player Movement Path | {title}')
     plt.legend()
     plt.grid()
+    # plt.xlim(beacons[:, 0].min() - 5, beacons[:, 0].max() + 5)
+    # plt.ylim(beacons[:, 1].min() - 5, beacons[:, 1].max() + 5)
     path = os.path.join(os.getcwd(), f'charts/{title}_path.png')
     plt.savefig(path)
     if plot: plt.show()
@@ -704,9 +808,14 @@ def main():
     # ("Outlier Removal", removeOutliers_ts)
     # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
-    filenames = ["ObstacleTest.csv"]
+    filenames = ["OverTheHeadTest.csv"]
+    # show  plots or not?
+    show_plots = False
+    # output doc as pdf?
+    pdf = True
 
     for name in filenames:
+        
         # start report
         doc = Document()
         gen_title(doc, author=name)
@@ -717,7 +826,7 @@ def main():
         dfs = processData(csv_filename, tests)
 
         # Plot the 1d charts
-        imgPath = plot1d(dfs, plot=False, doc=doc)
+        imgPath = plot1d(dfs, plot=show_plots, doc=doc)
         
         # Compare to GT Data
         gt_filename = "GT-obstacletest-UWB-feb5.csv"
@@ -726,12 +835,12 @@ def main():
         i = 0
         for df in dfs:
             print(f"\nAnalyzing {df[0]}")
-            imgPath, text = analyze_ftm_data(df[1], gt, title=df[0], plot=False)
-            add_section(doc, sectionName=f"{df[0]} - Ground Truth", sectionText=text, imgPath=imgPath, caption=f"{df[0]} Measured vs GT Distance", imgwidth=0.7) # image width needs to be lower fo rGT so it fits on page
-            absError(df[1], title=df[0], plot=False)
+            imgPath, text = analyze_ftm_data(df[1], gt, title=df[0], plot=show_plots)
+            add_section(doc, sectionName=f"{df[0]} - Ground Truth Comp.", sectionText=text, imgPath=imgPath, caption=f"{df[0]} Measured vs GT Distance", imgwidth=0.7) # image width needs to be lower fo rGT so it fits on page
+            absError(gt, df[1], title=df[0], plot=show_plots)
             i += 1
 
-        #TEMPORARY CODE TO SAVE A USEFUL CSV FOR TRILATERATION
+        #TEMPORARY CODE TO SAVE A USEFUL CSV FOR TRILATEATION
         # i=0
         # for df in dfs:
         #     df[1].to_csv(f"processedtest{i}.csv", index=False)
@@ -748,13 +857,11 @@ def main():
         # Plot the final DFs
         for d in dfs:
             d[1].to_csv("processedtest.csv", index=False)
-            imgPath = plotPlayers(d, beaconPositions, plot=False)
+            imgPath = plotPlayers(d, beaconPositions, plot=show_plots)
             add_section(doc, sectionName=d[0], sectionText="", imgPath=imgPath, caption="Player Movement Path")
 
-        # output doc as pdf
-        pdf = False
         if pdf:
-            gen_pdf(doc, name+"_report")
+            gen_pdf(doc, name.split("/")[-1]+"_report")
 
     
 if __name__ == "__main__":

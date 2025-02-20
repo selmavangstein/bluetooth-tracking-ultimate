@@ -53,6 +53,8 @@ def gen_pdf(doc, title):
     Args:
         doc (pylatex Document() class): _description_
     """
+    # set cur dir to bluetooth-tracking-ultimate
+    
     doc.generate_pdf(title, clean_tex=False)  # Set clean_tex=True to remove .tex file after compilation
     print("PDF generated")
 

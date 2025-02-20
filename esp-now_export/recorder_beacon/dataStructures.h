@@ -3,7 +3,7 @@ Data pertaining to an individual beacon. Each message contains 6 instances.
 Acceleration data is recorded once per beacon, as required by Kalman filter
 */
 typedef struct BeaconData {
-  int FTMdist{ 0 };  //note: this is in cm!
+  int dist{ 0 };  //note: this is in cm!
   int8_t rssi {127}; //not required for current postprocessing, however will be valuable in the future
 } BeaconData;  //Total size: 3bytes
 

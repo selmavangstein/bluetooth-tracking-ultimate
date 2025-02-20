@@ -9,7 +9,10 @@
 // xiao recorder: 64:e8:33:50:c3:f8
 #include "dataStructures.h"
 #include <esp_now.h>
+#include <esp_wifi.h>
 #include <WiFi.h>
+
+const int NumPlayers = 2; // remember to change how we init last_reported depending on number of players!
 
 // Create a struct_message called myData
 Message myData;
@@ -17,7 +20,7 @@ Message myData;
 To reduce the odds of competing for a shared resource, we are only doing copying in our 
 rec callback function. Thus, printing happens on a set interval. 
 */
-u_int32_t last_reported {0}; //when multiple players are introduced, this will become a array of timestamps, as each player will have a unique timestamp to indicate message uniqueness
+u_int32_t last_reported[NumPlayers] {0,0}; //when multiple players are introduced, this will become a array of timestamps, as each player will have a unique timestamp to indicate message uniqueness
 
 
 
@@ -25,6 +28,22 @@ u_int32_t last_reported {0}; //when multiple players are introduced, this will b
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) {
   memcpy(&myData, incomingData, sizeof(myData));// Update the structures with the new incoming data
+  // if (myData.playerID == 'a'){
+  //   last_reported
+  // }
+  // Serial.print("haiii");
+}
+
+void readMacAddress(){
+  uint8_t baseMac[6];
+  esp_err_t ret = esp_wifi_get_mac(WIFI_IF_STA, baseMac);
+  if (ret == ESP_OK) {
+    Serial.printf("%02x:%02x:%02x:%02x:%02x:%02x\n",
+                  baseMac[0], baseMac[1], baseMac[2],
+                  baseMac[3], baseMac[4], baseMac[5]);
+  } else {
+    Serial.println("Failed to read MAC address");
+  }
 }
  
 void setup() {
@@ -39,6 +58,8 @@ void setup() {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
+
+  readMacAddress();
   
   // Once ESPNow is successfully Init, we will register for recv CB to
   // get recv packer info
@@ -46,16 +67,18 @@ void setup() {
 }
  
 void loop() {
-  if (myData.timestamp > last_reported) {
-    last_reported = myData.timestamp;
-    // Serial.printf("ts:%lu-b1:{d:%d,ax:%d,ay:%d,az:%d} b2:{d:%d,ax:%d,ay:%d,az:%d} b3:{d:%d,ax:%d,ay:%d,az:%d}",myData.timestamp,
-    //             myData.CollectedBeaconData[0].FTMdist,myData.CollectedBeaconData[0].xaccel,myData.CollectedBeaconData[0].yaccel,myData.CollectedBeaconData[0].zaccel,
-    //             myData.CollectedBeaconData[1].FTMdist,myData.CollectedBeaconData[1].xaccel,myData.CollectedBeaconData[1].yaccel,myData.CollectedBeaconData[1].zaccel,
-    //             myData.CollectedBeaconData[2].FTMdist,myData.CollectedBeaconData[2].xaccel,myData.CollectedBeaconData[2].yaccel,myData.CollectedBeaconData[2].zaccel);
-    Serial.printf("%lu,%f,%f,%f,%f,%f,%f,%f",myData.timestamp,(float)myData.CollectedBeaconData[0].FTMdist/100.0,(float)myData.CollectedBeaconData[1].FTMdist/100.0,(float)myData.CollectedBeaconData[2].FTMdist/100.0,(float)myData.CollectedBeaconData[3].FTMdist/100.0,
+  if (myData.playerID == 'a' and myData.timestamp > last_reported[0]) {
+    last_reported[0] = myData.timestamp;
+    Serial.printf("%c,%lu,%f,%f,%f,%f,%f,%f,%f",myData.playerID,myData.timestamp,(float)myData.CollectedBeaconData[0].dist/100.0,(float)myData.CollectedBeaconData[1].dist/100.0,(float)myData.CollectedBeaconData[2].dist/100.0,(float)myData.CollectedBeaconData[3].dist/100.0,
                   (float)myData.xaccel/100.0,(float)myData.yaccel/100.0,(float)myData.zaccel/100.0); //note: currently, not reporting RSSI, but this could be added in the future
+    Serial.println();
+  }else if (myData.playerID == 'b' and myData.timestamp > last_reported[1]){
+    last_reported[1] = myData.timestamp;
+    Serial.printf("%c,%lu,%f,%f,%f,%f,%f,%f,%f",myData.playerID,myData.timestamp,(float)myData.CollectedBeaconData[0].dist/100.0,(float)myData.CollectedBeaconData[1].dist/100.0,(float)myData.CollectedBeaconData[2].dist/100.0,(float)myData.CollectedBeaconData[3].dist/100.0,
+                  ((float)myData.xaccel)/100.0,((float)myData.yaccel)/100.0,(float)myData.zaccel/100.0); //note: currently, not reporting RSSI, but this could be added in the future
     Serial.println();
   }
   
   delay(50);  
+  // Serial.println("hello");
 }

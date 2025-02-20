@@ -134,13 +134,14 @@ def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
             return fitted_line1
 
         # Compares the residuals with the threshold and sets it to either true or false for each data point in the window
-        outliers_notleftout = np.abs(residuals) < (residual_variance_threshold *std_res)
+        no_outliers = np.abs(residuals) < (residual_variance_threshold *std_res)
         
         # New linear fit line without outlier points
-        if np.sum(outliers_notleftout) >= 2:
+        if np.sum(no_outliers) >= 2:
             model2 = LinearRegression()
-            # Excludes points that are "outliers"
-            model2.fit(x[outliers_notleftout], y[outliers_notleftout])
+            local_minima = float(min(y[no_outliers]))
+            new_window = [local_minima] * len(y[no_outliers])
+            model2.fit(x[no_outliers], new_window)
             fitted_line2 = model2.predict(x)
             return fitted_line2
         else:
