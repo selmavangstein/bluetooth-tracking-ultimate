@@ -12,6 +12,8 @@ Uses a pandas df to store the data, and a matplotlib animation to animate the da
 from analyze_ftm_data import analyze_ftm_data
 from abs_error import *
 from kalman_filter_pos_vel_acc import pipelineKalman
+from kalman_2d import pipelineKalman_2d
+from final_trilateration import trilaterate
 from report import *
 #from kalman_filter_acc_bound import pipelineKalman
 
@@ -488,7 +490,7 @@ def distanceCorrection(df):
     for column in df.columns:
         if not column.startswith('b'):
             continue
-        df[column] = df[column]-0.8
+        df[column] = df[column]
     return df
 
 def processData(filename, tests):
@@ -658,13 +660,18 @@ def plotPlayers(data, beacons, plot=True):
     player_positions3 = np.array(player_positions3)
     player_positions4 = np.array(player_positions4)
 
+    df = trilaterate(df, beacons)
+    if title != "Ground Truth":
+        df = pipelineKalman_2d(df)
+
     # Plot player positions
     plt.figure(figsize=(10, 6))
-    plt.plot(player_positions1[:, 0], player_positions1[:, 1], 'o-', label='Player Path 1', alpha=0.5)
-    plt.plot(player_positions2[:, 0], player_positions2[:, 1], 'o-', label='Player Path 2', alpha=0.5)
-    plt.plot(player_positions3[:, 0], player_positions3[:, 1], 'o-', label='Player Path 3', alpha=0.5)
-    plt.plot(player_positions4[:, 0], player_positions4[:, 1], 'o-', label='Player Path 4', alpha=0.5)
-    plt.plot(player_positions[:, 0], player_positions[:, 1], 'o-', label='Player Path') # plot the avg last
+    plt.plot(player_positions1[:, 0], player_positions1[:, 1], '.-', label='Player Path 1', alpha=0.5)
+    plt.plot(player_positions2[:, 0], player_positions2[:, 1], '.-', label='Player Path 2', alpha=0.5)
+    plt.plot(player_positions3[:, 0], player_positions3[:, 1], '.-', label='Player Path 3', alpha=0.5)
+    plt.plot(player_positions4[:, 0], player_positions4[:, 1], '.-', label='Player Path 4', alpha=0.5)
+    plt.plot(player_positions[:, 0], player_positions[:, 1], '.-', label='Player Path') # plot the avg last
+    plt.plot(df['pos_x'], df['pos_y'], '.-', label='new trilateration')
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
     plt.ylabel('Y Position')
@@ -697,7 +704,7 @@ def main():
     # ("Outlier Removal", removeOutliers_ts)
     # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
-    filenames = ["OverTheHeadTest.csv"]
+    filenames = ["ObstacleTest.csv"]
 
     for name in filenames:
         # start report
@@ -713,7 +720,7 @@ def main():
         imgPath = plot1d(dfs, plot=False, doc=doc)
         
         # Compare to GT Data
-        gt_filename = "GT-overheadtest-UWB-feb5.csv"
+        gt_filename = "GT-obstacletest-UWB-feb5.csv"
         gt_path = os.path.join(script_dir, "data", gt_filename)
         gt = loadData(gt_path)
         i = 0
@@ -724,14 +731,23 @@ def main():
             absError(df[1], title=df[0], plot=False)
             i += 1
 
+        #TEMPORARY CODE TO SAVE A USEFUL CSV FOR TRILATERATION
+        # i=0
+        # for df in dfs:
+        #     df[1].to_csv(f"processedtest{i}.csv", index=False)
+        #     i+=1
+
         # Plot GT 2d Data
         # beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
-        beaconPositions = np.array([[15, 0], [15, 20], [0, 0], [0, 20]])
+        #beaconPositions = np.array([[15, 0], [15, 20], [0, 0], [0, 20]])
+        #beaconPositions = np.array([[0, 0], [15, 0], [0, 20], [15, 20]])
+        beaconPositions = np.array([[0, 0], [12, 0], [0, 18], [12, 18]])  
         imgPath = plotPlayers(("Ground Truth", gt), beaconPositions, plot=False)
         add_section(doc, sectionName="Ground Truth", sectionText="", imgPath=imgPath, caption="Ground Truth Player Movement Path")
 
         # Plot the final DFs
         for d in dfs:
+            d[1].to_csv("processedtest.csv", index=False)
             imgPath = plotPlayers(d, beaconPositions, plot=False)
             add_section(doc, sectionName=d[0], sectionText="", imgPath=imgPath, caption="Player Movement Path")
 
