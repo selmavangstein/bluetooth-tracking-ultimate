@@ -49,7 +49,78 @@ def smoothData(df, window_size=5):
             continue
         smoothed_df[column] = df[column].ewm(span=window_size, adjust=False).mean()
     return smoothed_df
+
+
+def twoD_correction(locations, timestamps, acc, ema_window=100):
+    """
+    Attempts to correct the 2d trilateration data if there are big jumps
+    Almost like another kalman filter (but 2d)
+
+    takes in a list like : [[x,y], [x1,y1], ... [xn,yn]]
+    """
+
+    # Store the corrected data
+    corrections = [locations[0]]
+
+    # calculate an ema of the data
+    # convert to a pandas dataframe
+    locations_df = pd.DataFrame(locations, columns=['x', 'y'])
+    # locations_df['timestamp'] = timestamps
+    ema = locations_df.ewm(span=ema_window, adjust=False).mean()
+
+    # comvert timestamps to numbers
+    timestamps = [pd.Timestamp(ts).timestamp() for ts in timestamps]
+
+    # merge ema back to same format as original data
+    ema = ema[['x', 'y']].values
+
+    corrected = 0
+    total = 0
+
+    # Loop through the data
+    for i in range(1, len(locations)):
+        # if the distance between two points is greater than 10m
+        # get the time difference between the points
+        time_diff = (timestamps[i] - timestamps[i-1])
         
+        # time_diff = (timestamps[i] - timestamps[i-1]).total_seconds()
+        distance_diff = np.linalg.norm(locations[i] - corrections[i-1])
+
+        prev_distance_diff = np.linalg.norm(locations[i-1] - corrections[i-1]) * time_diff
+
+        scaler = time_diff * 10
+
+        if distance_diff > scaler:
+            # calculate the 10m circle around the previous point
+            circle = np.array([corrections[i-1] + np.array([scaler * np.cos(theta), scaler * np.sin(theta)]) for theta in np.linspace(0, 2 * np.pi, 100)])
+            correct_circle = np.array([corrections[i-1] + np.array([prev_distance_diff * np.cos(theta), prev_distance_diff * np.sin(theta)]) for theta in np.linspace(0, 2 * np.pi, 100)])
+            closest_point = min(correct_circle, key=lambda point: np.linalg.norm(point - ema[i-1]))
+            # plot closest point on the same slope as the ema prevdistaway from prev point
+            # slope = (ema[i-1][1] - corrections[i-1][1]) / (ema[i-1][0] - corrections[i-1][0])
+            # intercept = corrections[i-1][1] - slope * corrections[i-1][0]
+            # x_closest = (closest_point[0] + corrections[i-1][0]) / 2
+            # y_closest = slope * x_closest + intercept
+            # closest_point = np.array([x_closest, y_closest])
+            corrections.append(closest_point)
+            # quickly plot the correction for testing
+            plt.plot(corrections[i-1][0], corrections[i-1][1], 'yo', label='Prev Point')
+            plt.plot(locations[i][0], locations[i][1], 'bo', label='Current Point')
+            plt.plot(circle[:, 0], circle[:, 1], label='Impossible Circle')
+            plt.plot(ema[i-1][0], ema[i-1][1], 'ro', label='EMA Point')
+            plt.plot(closest_point[0], closest_point[1], 'go', label='Corrected Point (what is added)')
+            plt.legend()
+            plt.show()
+            plt.close()
+            corrected += 1
+            total += 1
+
+        else:
+            total += 1
+            corrections.append(locations[i])
+
+    print(f"Corrected {corrected} out of {total} points")
+    return np.array(corrections)
+
 def pipelineRemoveOutliers(df, window_size=20, residual_variance_threshold=0.8):
     """Removes outliers from a dataframe using a rolling residual variance threshold and standard deviation.
 
@@ -181,7 +252,6 @@ def removeOutliers(df, window_size=10, residual_variance_threshold=1.5):
     df = df.loc[:, :'za']
 
     return df
-
 
 def removeOutliers_dp(df, window_size=20, residual_variance_threshold=0.8):
     """Removes outliers from a dataframe using a rolling residual variance threshold and standard deviation.
@@ -630,6 +700,8 @@ def plotPlayers(data, beacons, plot=True):
     # calculate the players positions based on the best trilateration data (three circle selma example, closest three circles)
     # calc based on averages of all combinations of 3 beacons
     # calc based on most likely next position based on acc data
+    timestamps = df['timestamp']
+    # acc_data = df[['xa', 'ya', 'za']]
     player_positions = []
     player_positions1 = []
     player_positions2 = []
@@ -687,15 +759,17 @@ def plotPlayers(data, beacons, plot=True):
     player_positions2 = np.array(player_positions2)
     player_positions3 = np.array(player_positions3)
     player_positions4 = np.array(player_positions4)
+    corrected_positions = np.array(twoD_correction(player_positions.copy(), timestamps, 0))
     # ml_postions = np.array(ml_postions)
 
     # Plot player positions
     plt.figure(figsize=(10, 6))
-    plt.plot(player_positions1[:, 0], player_positions1[:, 1], 'o-', label='Player Path 1', alpha=0.5)
-    plt.plot(player_positions2[:, 0], player_positions2[:, 1], 'o-', label='Player Path 2', alpha=0.5)
-    plt.plot(player_positions3[:, 0], player_positions3[:, 1], 'o-', label='Player Path 3', alpha=0.5)
-    plt.plot(player_positions4[:, 0], player_positions4[:, 1], 'o-', label='Player Path 4', alpha=0.5)
+    # plt.plot(player_positions1[:, 0], player_positions1[:, 1], 'o-', label='Player Path 1', alpha=0.5)
+    # plt.plot(player_positions2[:, 0], player_positions2[:, 1], 'o-', label='Player Path 2', alpha=0.5)
+    # plt.plot(player_positions3[:, 0], player_positions3[:, 1], 'o-', label='Player Path 3', alpha=0.5)
+    # plt.plot(player_positions4[:, 0], player_positions4[:, 1], 'o-', label='Player Path 4', alpha=0.5)
     plt.plot(player_positions[:, 0], player_positions[:, 1], 'o-', label='Player Path') # plot the avg last
+    plt.plot(corrected_positions[:, 0], corrected_positions[:, 1], 'o-', label='Final (Corrected) Player Path', alpha=0.5)
     # plt.plot(ml_postions[:, 0], ml_postions[:, 1], 'o-', label='Player Path ML', alpha=0.5)
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
@@ -703,6 +777,8 @@ def plotPlayers(data, beacons, plot=True):
     plt.title(f'Player Movement Path | {title}')
     plt.legend()
     plt.grid()
+    # plt.xlim(beacons[:, 0].min() - 5, beacons[:, 0].max() + 5)
+    # plt.ylim(beacons[:, 1].min() - 5, beacons[:, 1].max() + 5)
     path = os.path.join(os.getcwd(), f'charts/{title}_path.png')
     plt.savefig(path)
     if plot: plt.show()
@@ -729,7 +805,7 @@ def main():
     # ("Outlier Removal", removeOutliers_ts)
     # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
-    filenames = ["feb9/2-9-test3-ftm.csv", "feb9/2-9-test3-uwb.csv"]
+    filenames = ["OverTheHeadTest.csv"]
 
     # show  plots or not?
     show_plots = False
