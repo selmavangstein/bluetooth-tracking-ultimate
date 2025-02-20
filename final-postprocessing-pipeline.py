@@ -51,7 +51,7 @@ def smoothData(df, window_size=5):
     return smoothed_df
 
 
-def twoD_correction(locations, timestamps, acc, ema_window=100):
+def twoD_correction(locations, timestamps, acc, ema_window=10):
     """
     Attempts to correct the 2d trilateration data if there are big jumps
     Almost like another kalman filter (but 2d)
@@ -65,14 +65,9 @@ def twoD_correction(locations, timestamps, acc, ema_window=100):
     # calculate an ema of the data
     # convert to a pandas dataframe
     locations_df = pd.DataFrame(locations, columns=['x', 'y'])
-    # locations_df['timestamp'] = timestamps
-    ema = locations_df.ewm(span=ema_window, adjust=False).mean()
 
     # comvert timestamps to numbers
     timestamps = [pd.Timestamp(ts).timestamp() for ts in timestamps]
-
-    # merge ema back to same format as original data
-    ema = ema[['x', 'y']].values
 
     corrected = 0
     total = 0
@@ -91,26 +86,26 @@ def twoD_correction(locations, timestamps, acc, ema_window=100):
         scaler = time_diff * 10
 
         if distance_diff > scaler:
+            # update ema
+            correction_df = pd.DataFrame(corrections, columns=['x', 'y'])
+            ema = correction_df.ewm(span=ema_window, adjust=False).mean()
+            ema = ema[['x', 'y']].values
+
             # calculate the 10m circle around the previous point
-            circle = np.array([corrections[i-1] + np.array([scaler * np.cos(theta), scaler * np.sin(theta)]) for theta in np.linspace(0, 2 * np.pi, 100)])
-            correct_circle = np.array([corrections[i-1] + np.array([prev_distance_diff * np.cos(theta), prev_distance_diff * np.sin(theta)]) for theta in np.linspace(0, 2 * np.pi, 100)])
+            circle = np.array([corrections[i-1] + np.array([scaler * np.cos(theta), scaler * np.sin(theta)]) for theta in np.linspace(0, 2 * np.pi, 100)]) # mostly used for plotting
+            correct_circle = np.array([corrections[i-1] + np.array([prev_distance_diff * np.cos(theta), prev_distance_diff * np.sin(theta)]) for theta in np.linspace(0, 2 * np.pi, 100)]) # calc new distanace
             closest_point = min(correct_circle, key=lambda point: np.linalg.norm(point - ema[i-1]))
-            # plot closest point on the same slope as the ema prevdistaway from prev point
-            # slope = (ema[i-1][1] - corrections[i-1][1]) / (ema[i-1][0] - corrections[i-1][0])
-            # intercept = corrections[i-1][1] - slope * corrections[i-1][0]
-            # x_closest = (closest_point[0] + corrections[i-1][0]) / 2
-            # y_closest = slope * x_closest + intercept
-            # closest_point = np.array([x_closest, y_closest])
+
             corrections.append(closest_point)
-            # quickly plot the correction for testing
-            plt.plot(corrections[i-1][0], corrections[i-1][1], 'yo', label='Prev Point')
-            plt.plot(locations[i][0], locations[i][1], 'bo', label='Current Point')
-            plt.plot(circle[:, 0], circle[:, 1], label='Impossible Circle')
-            plt.plot(ema[i-1][0], ema[i-1][1], 'ro', label='EMA Point')
-            plt.plot(closest_point[0], closest_point[1], 'go', label='Corrected Point (what is added)')
-            plt.legend()
-            plt.show()
-            plt.close()
+            """quickly plot the correction for testing"""
+            # plt.plot(corrections[i-1][0], corrections[i-1][1], 'yo', label='Prev Point')
+            # plt.plot(locations[i][0], locations[i][1], 'bo', label='Current Point')
+            # plt.plot(circle[:, 0], circle[:, 1], label='Impossible Circle')
+            # plt.plot(ema[i-1][0], ema[i-1][1], 'ro', label='EMA Point')
+            # plt.plot(closest_point[0], closest_point[1], 'go', label='Corrected Point (what is added)')
+            # plt.legend()
+            # plt.show()
+            # plt.close()
             corrected += 1
             total += 1
 
