@@ -767,13 +767,15 @@ def plotPlayers(data, beacons, plot=True):
 
     # Plot player positions
     plt.figure(figsize=(10, 6))
-    plt.plot(player_positions1[:, 0], player_positions1[:, 1], 'o-', label='Player Path 1', alpha=0.5)
-    plt.plot(player_positions2[:, 0], player_positions2[:, 1], 'o-', label='Player Path 2', alpha=0.5)
-    plt.plot(player_positions3[:, 0], player_positions3[:, 1], 'o-', label='Player Path 3', alpha=0.5)
-    plt.plot(player_positions4[:, 0], player_positions4[:, 1], 'o-', label='Player Path 4', alpha=0.5)
-    plt.plot(player_positions[:, 0], player_positions[:, 1], 'o-', label='Player Path') # plot the avg last
-    plt.plot(df['pos_x'], df['pos_y'], '.-', label='new trilateration')
-    plt.plot(corrected_positions[:, 0], corrected_positions[:, 1], 'o-', label='Final (Corrected) Player Path', alpha=0.5)
+    for i in range(len(player_positions1)):
+        alpha = (i + 1) / len(player_positions1)
+        plt.plot(player_positions1[i:i+2, 0], player_positions1[i:i+2, 1], 'o-', label='Player Path 1' if i == 0 else "", alpha=alpha)
+        plt.plot(player_positions2[i:i+2, 0], player_positions2[i:i+2, 1], 'o-', label='Player Path 2' if i == 0 else "", alpha=alpha)
+        plt.plot(player_positions3[i:i+2, 0], player_positions3[i:i+2, 1], 'o-', label='Player Path 3' if i == 0 else "", alpha=alpha)
+        plt.plot(player_positions4[i:i+2, 0], player_positions4[i:i+2, 1], 'o-', label='Player Path 4' if i == 0 else "", alpha=alpha)
+        plt.plot(player_positions[i:i+2, 0], player_positions[i:i+2, 1], 'o-', label='Player Path' if i == 0 else "", alpha=alpha) # plot the avg last
+        plt.plot(df['pos_x'], df['pos_y'], '.-', label='new trilateration', alpha=alpha)
+        plt.plot(corrected_positions[:, 0], corrected_positions[:, 1], 'o-', label='Final (Corrected) Player Path', alpha=alpha)
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
     plt.ylabel('Y Position')
