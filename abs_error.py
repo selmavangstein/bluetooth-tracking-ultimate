@@ -34,8 +34,7 @@ def calculate_abs_error(groundtruth, measurements):
     return merged, errors
 
 def plot_abs_error(timestamps, errors, title="", plot=False):
-    # TODO: figure out a consistent cap for y-axis
-    axes = plt.subplots(4,1, figsize=(10,12), sharex=True)[1]
+    axes = plt.subplots(4,1, figsize=(10,12), sharex=True, sharey=True)[1]
 
     for i, ax in enumerate(axes,1):
         ax.plot(timestamps, errors[i], label=f'Absolute Error Beacon {i}', marker='o')
