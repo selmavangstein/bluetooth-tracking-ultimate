@@ -770,8 +770,8 @@ def plotPlayers(data, beacons, plot=True):
     if title != "Ground Truth":
         dfk = pipelineKalman_2d(df)
 
-    #kalman_positions = df[['pos_x', 'pos_y']].to_numpy()
-    #corrected_positions = np.array(twoD_correction(kalman_positions.copy(), timestamps, 0))
+    kalman_positions = df[['pos_x', 'pos_y']].to_numpy()
+    corrected_positions = np.array(twoD_correction(kalman_positions.copy(), timestamps, 0))
 
     # Plot player positions
     plt.figure(figsize=(10, 6))
