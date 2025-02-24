@@ -17,7 +17,7 @@ def circle_intersections(p1, r1, p2, r2):
     return [p_mid + offset, p_mid - offset]
 
 def circle_intersections_with_pair(p1, r1, p2, r2, pair):
-    """Finds intersection points between two circles and returns a list of
+    """Finds intersection points b etween two circles and returns a list of
     (intersection_point, pair) so we know which beacons produced it."""
     d = np.linalg.norm(p2 - p1)
     if d > r1 + r2 or d < abs(r1 - r2):
@@ -146,12 +146,13 @@ def find_best_intersections(beacons, distances):
 
 
 def find_best_intersections2(beacons, distances):
-    """Finds the best intersection points for each beacon triplet."""
+    """Detects the densest cluster and finds its centroid. 
+    Returns the centroid and the associated confidence interval."""
     all_intersections = []  # Store all intersection points found
-    best_beacons = None
-    best_intersections = None
-    final_position = None
-    min_avg_distance = float('inf')
+    #best_beacons = None
+    #best_intersections = None
+    #final_position = None
+    #min_avg_distance = float('inf')
     estimated_position = np.array([None, None])
     best_cluster_points = None
 
@@ -170,17 +171,19 @@ def find_best_intersections2(beacons, distances):
     # Convert to NumPy array
     all_intersections = np.array(all_intersections)
         # Apply DBSCAN
-    eps = 4  # Maximum distance between points in a cluster
+    eps = 2  # Maximum distance between points in a cluster
     eps_max = 60
     min_samples = 2  # Minimum points to form a cluster
-    db = DBSCAN(eps=eps, min_samples=min_samples).fit(all_intersections)
-    labels = np.array(db.labels_)
-    valid_clusters = labels[labels != -1]
 
     x_min, y_min = np.min(beacons, axis=0)
     x_max, y_max = np.max(beacons, axis=0)
 
     while np.all(estimated_position == np.array([None, None])):
+        #print("scanning for clusters...", eps)
+        db = DBSCAN(eps=eps, min_samples=min_samples).fit(all_intersections)
+        labels = np.array(db.labels_)
+        valid_clusters = labels[labels != -1]
+
         if len(valid_clusters) > 0:
             unique_labels, counts = np.unique(labels[labels != -1], return_counts=True)
             best_cluster_label = unique_labels[np.argmax(counts)]
@@ -194,22 +197,40 @@ def find_best_intersections2(beacons, distances):
                 estimated_position = np.array([None, None])
                 labels[labels == best_cluster_label] = -1
                 valid_clusters = labels[labels != -1]
+                eps +=2
 
             elif estimated_position[1] < y_min-2 or estimated_position[1] > y_max+2:
                 #print("position out of bounds, finding a new one")
                 estimated_position = np.array([None, None])
                 labels[labels == best_cluster_label] = -1
-                labels[labels == best_cluster_label] = -1
                 valid_clusters = labels[labels != -1]
+                eps +=2
         else:
             if eps > eps_max:
                 estimated_position = np.mean(all_intersections, axis=0)
+                best_cluster_points = all_intersections
+                break
             eps +=2
-            #print("no valid clusters found, trying again")
 
+
+    residuals = []
+    for i, beacon in enumerate(beacons):
+        r_i = distances[i]
+        dist_est = np.linalg.norm(estimated_position - beacon)
+        residuals.append((dist_est - r_i)**2)
+
+    SSE = sum(residuals)
+    alpha = 0.5
+    confidence = 1.0 / (1.0 + alpha* np.sqrt(SSE))
+    #cluster_size = len(best_cluster_points)
+    #spread = np.mean(np.linalg.norm(best_cluster_points - estimated_position, axis=1))
+    #alpha = 10e5  # Tune this parameter; higher alpha means more sensitivity.
+    #confidence = (cluster_size / (cluster_size + 2)) * np.exp(-alpha * spread)
+    #confidence = (cluster_size / (cluster_size + 2)) * (1.0 / (1.0 + 10 * spread))
+    #confidence = 1.0 / (spread*0.5 + 1)
     #if we use this - no current best_beacons data
     #so change the return or implement a way of finding it
-    return estimated_position, best_beacons, all_intersections, best_cluster_points
+    return estimated_position, confidence, all_intersections, best_cluster_points
 
 def plot_results(beacons, distances, all_intersections, best_intersections, final_position):
     """Plots beacons, circles, all intersections, selected intersections, and estimated position."""
@@ -266,6 +287,7 @@ def trilaterate(df, beacon_positions):
 
     # Initialize position lists
     pos_x, pos_y = [], []
+    confidence_list = []
 
     # Dictionary to count how often each beacon is used
     beacon_usage_count = defaultdict(int)
@@ -275,9 +297,10 @@ def trilaterate(df, beacon_positions):
 
         try:
             # Compute best trilateration
-            final_position, best_beacons, all_intersections, best_intersections = find_best_intersections2(beacon_positions, distances)
+            final_position, confidence, all_intersections, best_intersections = find_best_intersections2(beacon_positions, distances)
             pos_x.append(final_position[0])
             pos_y.append(final_position[1])
+            confidence_list.append(confidence)
 
             # for beacon_idx in best_beacons:
             #     beacon_usage_count[beacon_idx] += 1
@@ -292,6 +315,7 @@ def trilaterate(df, beacon_positions):
     # Add computed positions to the DataFrame
     df_result['pos_x'] = pos_x
     df_result['pos_y'] = pos_y
+    df_result['confidence'] = confidence_list
 
     # print("Beacon Usage Count:")
     # for beacon_idx, count in sorted(beacon_usage_count.items()):

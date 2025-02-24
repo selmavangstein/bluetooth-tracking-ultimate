@@ -118,6 +118,7 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, tit
 
         ax.set_title(f"Anchor {anchor_id} - Measured vs GT")
         ax.set_ylabel("Distance (m)")
+        ax.set_ylim(0, 50)
         ax.legend()
         ax.grid(True)
 

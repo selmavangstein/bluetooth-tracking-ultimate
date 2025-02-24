@@ -13,7 +13,9 @@ from analyze_ftm_data import analyze_ftm_data
 from abs_error import *
 from kalman_filter_pos_vel_acc import pipelineKalman
 from kalman_2d import pipelineKalman_2d
+#from kalman2d_4state import pipelineKalman_2d
 from final_trilateration import trilaterate
+from test_trilateration_v2 import weighted_trilateration
 from report import *
 #from kalman_filter_acc_bound import pipelineKalman
 
@@ -53,7 +55,7 @@ def smoothData(df, window_size=5):
     return smoothed_df
 
 
-def twoD_correction(locations, timestamps, acc, ema_window=10):
+def twoD_correction(locations, timestamps, acc, ema_window=100):
     """
     Attempts to correct the 2d trilateration data if there are big jumps
     Almost like another kalman filter (but 2d)
@@ -551,7 +553,7 @@ def distanceCorrection(df):
     for column in df.columns:
         if not column.startswith('b'):
             continue
-        df[column] = df[column]
+        df[column] = df[column]-0.8
     return df
 
 def processData(filename, tests):
@@ -756,14 +758,20 @@ def plotPlayers(data, beacons, plot=True):
     player_positions2 = np.array(player_positions2)
     player_positions3 = np.array(player_positions3)
     player_positions4 = np.array(player_positions4)
-    corrected_positions = np.array(twoD_correction(player_positions.copy(), timestamps, 0))
     # ml_postions = np.array(ml_postions)
 
-  
-
     df = trilaterate(df, beacons)
+    #df = weighted_trilateration(df, beacons)
+    # print("confidence stuff: ")
+    # print("min: ", np.min(df["confidence"]))
+    # print("max: ", np.max(df["confidence"]))
+    # print("ave: ", np.mean(df["confidence"]))
+    # print("std: ", np.std(df["confidence"]))
     if title != "Ground Truth":
-        df = pipelineKalman_2d(df)
+        dfk = pipelineKalman_2d(df)
+
+    #kalman_positions = df[['pos_x', 'pos_y']].to_numpy()
+    #corrected_positions = np.array(twoD_correction(kalman_positions.copy(), timestamps, 0))
 
     # Plot player positions
     plt.figure(figsize=(10, 6))
@@ -813,11 +821,11 @@ def main():
     # ("Outlier Removal", removeOutliers_ts)
     # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
-    filenames = ["OverTheHeadTest.csv"]
+    filenames = ["ObstacleTest.csv"]
     # show  plots or not?
     show_plots = False
     # output doc as pdf?
-    pdf = True
+    pdf = False
 
     for name in filenames:
         
@@ -845,11 +853,11 @@ def main():
             absError(gt, df[1], title=df[0], plot=show_plots)
             i += 1
 
-        #TEMPORARY CODE TO SAVE A USEFUL CSV FOR TRILATEATION
-        # i=0
-        # for df in dfs:
-        #     df[1].to_csv(f"processedtest{i}.csv", index=False)
-        #     i+=1
+        #TEMPORARY CODE TO SAVE A USEFUL CSV FOR TRILATEATION TESTING
+        i=0
+        for df in dfs:
+            df[1].to_csv(f"processedtest{i}.csv", index=False)
+            i+=1
 
         # Plot GT 2d Data
         # beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])

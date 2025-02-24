@@ -37,7 +37,7 @@ def pos_vel_filter_2d(x, P, R, Q=0., dt=1.):
 
     return kf
 
-def kalman_filter_2d(zs_x, zs_y, ta, times, smoothing=True):
+def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, smoothing=True):
     '''Takes x, y measurements and timestamps. Returns filtered data.'''
 
     times = pd.to_datetime(times)
@@ -48,34 +48,65 @@ def kalman_filter_2d(zs_x, zs_y, ta, times, smoothing=True):
 
     # Initial covariance matrices
     P = np.diag([0.2, 0.2, 9., 9., 5., 5.])  # Position & velocity uncertainty
-    Q = Q_discrete_white_noise(dim=3, dt=dt, var=20*dt, block_size=2)  # Process noise
-    R = np.eye(2) * 0.2  # Measurement noise
+    Q = Q_discrete_white_noise(dim=3, dt=dt, var=200*dt, block_size=2)  # Process noise
+    R = np.eye(2) * 0.8  # Measurement noise
+
+    max_vel = 11
 
     f = pos_vel_filter_2d(x, P, R, Q, dt)
     s = Saver(f)
 
+    impossible_circle_counter = 0
+    inflated_R_counter = 0
     for i in range(len(zs_x)):
+        prev_coord = f.x[0:2]
         f.predict()
 
         # Clamp estimated acceleration
         estimated_acc = np.linalg.norm(f.x[4:6])  # Magnitude of (ax, ay)
         if estimated_acc > ta[i]:
-            f.x[4:6] *= ta[i] / estimated_acc  #THINK ABOUT THE BEST APPROACH HERE
+            f.x[4:6] *= ta[i] / estimated_acc
 
-        # Compute movement limit - might leave this to cullen's thing
-        # if i >= 1:
-        #     max_pos_change = np.linalg.norm(f.x[2:4]) * dt + 0.5 * ta[i] * dt**2
-        #     predicted_change = np.linalg.norm([zs_x[i] - zs_x[i-1], zs_y[i] - zs_y[i-1]])
+        meas = np.array([zs_x[i], zs_y[i]])
 
-        #     if predicted_change > max_pos_change:
-        #         zs_x[i] = zs_x[i-1] + np.sign(f.x[2]) * max_pos_change
-        #         zs_y[i] = zs_y[i-1] + np.sign(f.x[3]) * max_pos_change
+        if i > 0:
+            predicted_change = np.linalg.norm(meas - prev_coord)
+            predicted_velocity = predicted_change/dt
+            if predicted_velocity > max_vel:
+                impossible_circle_counter+=1
+                max_change = max_vel * dt  # maximum allowed displacement
+                direction = (meas - prev_coord) / predicted_change
+                meas = prev_coord + max_change * direction
+
+        speed = np.linalg.norm(f.x[2:4])
+        if speed > max_vel:
+            f.x[2:4] *= max_vel / speed
 
 
-        #ADD INFLATED R BASED ON CONFIDENCE LEVELS HERE!!
+        # Option 1: Dynamic scaling based on confidence (continuous approach)
+        # We assume confidence_factor[i] is between 0 and 1.
+        # Lower confidence → higher measurement noise.
+        #dynamic_scale = 0.2 / (confidence_factor[i] + 1e-6) #TRY EXPONENTIAL
+        #R_dynamic = R * dynamic_scale
+
+        # Option 2: Hard cutoff (uncomment this block if you prefer cutoff behavior)
+        cutoff = 0.5          # Confidence threshold
+        inflation = 100.0     # How much to inflate R if below threshold
+        if confidence_factor[i] < cutoff:
+            R_dynamic = R * inflation
+            inflated_R_counter += 1
+        else:
+            R_dynamic = R
+
+        f.R = R_dynamic
+
         # Update filter with new measurement
-        f.update(np.array([zs_x[i], zs_y[i]]))
+        f.update(meas)
         s.save()
+
+        #fix this hardcoding
+        f.x[0] = np.clip(f.x[0], -2, 14)
+        f.x[1] = np.clip(f.x[1], -2, 20)
 
     s.to_array()
     xs = s.x
@@ -85,6 +116,8 @@ def kalman_filter_2d(zs_x, zs_y, ta, times, smoothing=True):
     if smoothing:
         smooth_xs, _, _, _ = f.rts_smoother(xs, covs)
 
+    print("Points corrected by impossible circle: ", impossible_circle_counter)
+    print("inflated R's: ", inflated_R_counter)
     return s, smooth_xs
 
 def pipelineKalman_2d(df):
@@ -95,8 +128,9 @@ def pipelineKalman_2d(df):
     zs_y = df['pos_y'].values
     ta = df['ta'].values
     times = df['timestamp']
+    confidence_factor = df['confidence']
 
-    s, smooth_xs = kalman_filter_2d(zs_x, zs_y, ta, times, smoothing=True)
+    s, smooth_xs = kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, smoothing=True)
 
     df['pos_x'] = s.x[:, 0]
     df['pos_y'] = s.x[:, 1]
