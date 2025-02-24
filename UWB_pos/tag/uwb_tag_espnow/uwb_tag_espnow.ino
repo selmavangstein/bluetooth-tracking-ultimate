@@ -28,6 +28,9 @@ const uint8_t PIN_SCL = 22;
 
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 
+
+// NOTE: change the broadcastAddress to the mac address of the recorder beacon
+// to find the recorder address, uncomment the readMacAddress() function in setup(), then insert it here in the following format
 // const uint8_t broadcastAddress[] = { 0x64, 0xE8, 0x33, 0x50, 0xC3, 0xf8 }; //prev recorder beacon address
 const uint8_t broadcastAddress[] = { 0xf0, 0x9e, 0x9e, 0x3b, 0xe5, 0xd8 };
 esp_now_peer_info_t peerInfo;
@@ -46,7 +49,7 @@ Message curData;
 u_int32_t lastSent = 0;
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  // Debugging:
+  // Debug
   // Serial.print("\r\nLast Packet Send Status:\t");
   // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
   return;
@@ -55,6 +58,7 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 
 void setup() {
+  curData.playerID = 'b';
   Serial.begin(115200);
   delay(1000);
   // Debugging with no accel
@@ -88,8 +92,8 @@ void setup() {
   DW1000Ranging.attachNewDevice(newDevice);
   DW1000Ranging.attachInactiveDevice(inactiveDevice);
   //Set as tag
-  // DW1000Ranging.startAsTag("7D:00:22:EA:82:60:3B:9C", DW1000.MODE_LONGDATA_RANGE_LOWPOWER); //tag1-potentially investigate new modes
-  DW1000Ranging.startAsTag("22:22:55:55:66:60:3B:9C", DW1000.MODE_LONGDATA_RANGE_LOWPOWER);  //tag2
+  DW1000Ranging.startAsTag("7D:00:22:EA:82:60:3B:9C", DW1000.MODE_LONGDATA_RANGE_LOWPOWER); //tag1-potentially investigate new modes
+  // DW1000Ranging.startAsTag("99:99:88:88:66:11:25:32", DW1000.MODE_LONGDATA_RANGE_LOWPOWER);  //tag2
 }
 
 void loop() {
@@ -127,7 +131,6 @@ void loop() {
     lastSent = millis();
   }
   // esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&curData, sizeof(curData));  // sending our message to the recorder beacon via espnow
-  // delay(1000);
 }
 
 void newRange() {
