@@ -25,7 +25,7 @@ def plot_results(beacons, distances, all_intersections, best_intersections, fina
         ax.scatter(all_intersections[:, 0], all_intersections[:, 1], color="black", marker="x", label="All intersections")
 
     # Plot best intersections in green
-    if best_intersections is not None and best_intersections.size > 0:
+    if best_intersections != None and best_intersections.size > 0:
         ax.scatter(best_intersections[:, 0], best_intersections[:, 1], color="green", marker="x", label="Best intersections")
 
     # Plot final estimated position in red
@@ -41,17 +41,18 @@ def plot_results(beacons, distances, all_intersections, best_intersections, fina
     plt.show()
 
 
-testdata = pd.read_csv("processedtest6.csv")
-row = testdata.iloc[504]  # Select a specific row for testing
+#testdata = pd.read_csv("processedtest6.csv")
+testdata = pd.read_csv("data/GT-obstacletest-UWB-feb5.csv")
+row = testdata.iloc[2]  # Select a specific row for testing
 timestamp = pd.to_datetime(row['timestamp'])
 distances = np.array(row[[col for col in testdata.columns if col.startswith('b')]])
 beacons = np.array([[0, 0], [12, 0], [0, 18], [12, 18]])  
 #beacons = np.array([[0, 0], [15, 0], [0, 20], [15, 20]])
 
 # Step 1: Find best intersection points and final position
-final_position, best_beacons, all_intersections, best_intersections = find_best_intersections2(beacons, distances)
-print("# of all intersections: ", len(all_intersections))
-print("# of best intersections: ", len(best_intersections))
+final_position, confidence, all_intersections, best_intersections = find_best_intersections2(beacons, distances)
+#print("# of all intersections: ", (all_intersections))
+#print("# of best intersections: ", (best_intersections))
 
 # Step 2: Plot the results
 plot_results(beacons, distances, all_intersections, best_intersections, final_position, timestamp)
