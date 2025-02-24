@@ -769,13 +769,16 @@ def plotPlayers(data, beacons, plot=True):
     plt.figure(figsize=(10, 6))
     for i in range(len(player_positions1)):
         alpha = (i + 1) / len(player_positions1)
-        plt.plot(player_positions1[i:i+2, 0], player_positions1[i:i+2, 1], 'o-', label='Player Path 1' if i == 0 else "", alpha=alpha)
-        plt.plot(player_positions2[i:i+2, 0], player_positions2[i:i+2, 1], 'o-', label='Player Path 2' if i == 0 else "", alpha=alpha)
-        plt.plot(player_positions3[i:i+2, 0], player_positions3[i:i+2, 1], 'o-', label='Player Path 3' if i == 0 else "", alpha=alpha)
-        plt.plot(player_positions4[i:i+2, 0], player_positions4[i:i+2, 1], 'o-', label='Player Path 4' if i == 0 else "", alpha=alpha)
-        plt.plot(player_positions[i:i+2, 0], player_positions[i:i+2, 1], 'o-', label='Player Path' if i == 0 else "", alpha=alpha) # plot the avg last
-        plt.plot(df['pos_x'], df['pos_y'], '.-', label='new trilateration', alpha=alpha)
-        plt.plot(corrected_positions[:, 0], corrected_positions[:, 1], 'o-', label='Final (Corrected) Player Path', alpha=alpha)
+        # plt.plot(player_positions1[i:i+2, 0], player_positions1[i:i+2, 1], 'o-', alpha=alpha, color='grey')
+        # plt.plot(player_positions2[i:i+2, 0], player_positions2[i:i+2, 1], 'o-', alpha=alpha, color='green')
+        # plt.plot(player_positions3[i:i+2, 0], player_positions3[i:i+2, 1], 'o-', alpha=alpha, color='purple')
+        # plt.plot(player_positions4[i:i+2, 0], player_positions4[i:i+2, 1], 'o-', alpha=alpha, color='orange')
+        plt.plot(player_positions[i:i+2, 0], player_positions[i:i+2, 1], 'o-', alpha=alpha, color='blue') # plot the avg last
+    
+        plt.plot(corrected_positions[i:i+2, 0], corrected_positions[i:i+2, 1], 'o-', alpha=alpha, color='red')
+    
+    plt.plot(df['pos_x'], df['pos_y'], '.-', alpha=alpha)
+    # plt.legend(['Player Path 1', 'Player Path 2', 'Player Path 3', 'Player Path 4', 'Player Path', 'New Trilateration', 'Final (Corrected) Player Path'])
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
     plt.ylabel('Y Position')
