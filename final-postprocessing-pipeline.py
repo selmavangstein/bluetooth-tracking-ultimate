@@ -1036,21 +1036,27 @@ def plotPlayers(data, beacons, plot=True):
         dfk = pipelineKalman_2d(df)
         #dfave = pipelineKalman_2d(finalPlayerPositions)
 
-    #kalman_positions = df[['pos_x', 'pos_y']].to_numpy()
-    #corrected_positions = np.array(twoD_correction(kalman_positions.copy(), timestamps, 0))
+    kalman_positions = df[['pos_x', 'pos_y']].to_numpy()
+    corrected_positions = np.array(twoD_correction(kalman_positions.copy(), timestamps, 0))
 
     # Plot player positions
     plt.figure(figsize=(10, 6))
-    #plt.plot(player_positions1[:, 0], player_positions1[:, 1], '.-', label='Player Path 1', alpha=0.5)
-    #plt.plot(player_positions2[:, 0], player_positions2[:, 1], '.-', label='Player Path 2', alpha=0.5)
-    #plt.plot(player_positions3[:, 0], player_positions3[:, 1], '.-', label='Player Path 3', alpha=0.5)
-    #plt.plot(player_positions4[:, 0], player_positions4[:, 1], '.-', label='Player Path 4', alpha=0.5)
-    #plt.plot(player_positions[:, 0], player_positions[:, 1], '.-', label='Player Path', alpha = 0.5) # plot the avg last
+    for i in range(len(player_positions1)):
+        alpha = (i + 1) / len(player_positions1)
+        # plt.plot(player_positions1[i:i+2, 0], player_positions1[i:i+2, 1], 'o-', alpha=alpha, color='grey')
+        # plt.plot(player_positions2[i:i+2, 0], player_positions2[i:i+2, 1], 'o-', alpha=alpha, color='green')
+        # plt.plot(player_positions3[i:i+2, 0], player_positions3[i:i+2, 1], 'o-', alpha=alpha, color='purple')
+        # plt.plot(player_positions4[i:i+2, 0], player_positions4[i:i+2, 1], 'o-', alpha=alpha, color='orange')
+        plt.plot(player_positions[i:i+2, 0], player_positions[i:i+2, 1], 'o-', alpha=alpha, color='blue') # plot the avg last
+    
+        plt.plot(corrected_positions[i:i+2, 0], corrected_positions[i:i+2, 1], 'o-', alpha=alpha, color='red')
+    
+    plt.plot(df['pos_x'], df['pos_y'], '.-', alpha=alpha)
+    
     if title != "Ground Truth":
         plt.plot(dfk['pos_x'], dfk['pos_y'], '.-', label='kalman and ave cluster')
         #plt.plot(dfave['pos_x'], dfave['pos_y'], '.-', color='orange', label='kalman and ave trilat')
-    #plt.plot(df['pos_x'], df['pos_y'], '.-', label='best cluster')
-    #plt.plot(corrected_positions[:, 0], corrected_positions[:, 1], '.-', label='Final (Corrected) Player Path', alpha=0.5)
+    # plt.legend(['Player Path 1', 'Player Path 2', 'Player Path 3', 'Player Path 4', 'Player Path', 'New Trilateration', 'Final (Corrected) Player Path'])
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
     plt.ylabel('Y Position')
