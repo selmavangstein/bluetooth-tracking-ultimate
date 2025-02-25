@@ -40,7 +40,7 @@ def pos_vel_filter_2d(x, P, R, Q=0., dt=1.):
 def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, smoothing=True):
     '''Takes x, y measurements and timestamps. Returns filtered data.'''
 
-    times = pd.to_datetime(times)
+    times = pd.to_datetime(times, format='%H:%M:%S.%f')
     dt = times.diff().dt.total_seconds().mean()
 
     # Initial state [x, y, vx, vy, ax, ay]
@@ -120,7 +120,7 @@ def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, smoothing=True):
     print("inflated R's: ", inflated_R_counter)
     return s, smooth_xs
 
-def pipelineKalman_2d(df):
+def pipelineKalman_2d(df, ave=True):
     df = df.copy()  
     df = find_acceleration_magnitude(df)  # Adds acceleration vectors to the df
 

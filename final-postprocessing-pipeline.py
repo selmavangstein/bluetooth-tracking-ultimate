@@ -430,7 +430,224 @@ def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
     df.reset_index(inplace=True)
     return df
 
-def velocityClamping(df):
+def velocityClamping_noplot(df):
+    """
+    Corrects the distance data in the dataframe using the data from the compass
+    If the player moves more than 10m away from the beacon in a second then the data is incorrect and should be corrected
+    """   
+    df = df.copy()  
+
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%H:%M:%S.%f')
+
+    dt = df['timestamp'].diff().dt.total_seconds()
+
+    for column in df.columns:
+        if not column.startswith('b'):
+            continue
+        
+        outlier_count = 1000000
+        for i in range(3):
+            outlier_count = mark_velocity_outliers(df, column, max_velocity=11)
+            if outlier_count <= 1:
+                break
+            
+    for column in df.columns:
+        if column.startswith('b'):
+            df[column].interpolate(method='linear', inplace=True)
+
+    return df
+
+
+def mark_velocity_outliers_noplot(df, column, max_velocity=11):
+    outlier_count = 0
+
+    last_valid_idx = 0
+    last_valid_value = df.loc[df.index[0], column]
+    last_valid_ts = df.loc[df.index[0], 'timestamp']
+
+    for i in range(1, len(df)):
+        curr_value = df.loc[df.index[i], column]
+        curr_ts = df.loc[df.index[i], 'timestamp']
+        
+        # If current is NaN, skip updating last valid values
+        if pd.isna(curr_value):
+            continue
+        
+        dt = (curr_ts - last_valid_ts).total_seconds()
+        if dt > 0 and last_valid_value is not None:
+            velocity = abs(curr_value - last_valid_value) / dt
+            if velocity > max_velocity:
+                df.loc[df.index[i], column] = np.nan
+                outlier_count += 1
+                # Do NOT update last_valid_* because current value is not valid.
+                continue
+            else:
+                # Update last valid values because this point is valid.
+                last_valid_idx = i
+                last_valid_value = curr_value
+                last_valid_ts = curr_ts
+        else:
+            # If dt==0 or something is off, update the references.
+            last_valid_idx = i
+            last_valid_value = curr_value
+            last_valid_ts = curr_ts
+    
+    return outlier_count
+
+import numpy as np
+import pandas as pd
+import itertools
+import matplotlib.pyplot as plt
+from sklearn.cluster import DBSCAN
+
+def circle_intersections(p1, r1, p2, r2):
+    """Finds intersection points between two circles."""
+    d = np.linalg.norm(p2 - p1)
+    if d > r1 + r2 or d < abs(r1 - r2):  # No intersection
+        return []
+    a = (r1**2 - r2**2 + d**2) / (2 * d)
+    h = np.sqrt(max(0, r1**2 - a**2))
+    p_mid = p1 + a * (p2 - p1) / d
+    offset = h * np.array([-(p2[1] - p1[1]) / d, (p2[0] - p1[0]) / d])
+    return [p_mid + offset, p_mid - offset]
+
+def mark_velocity_outliers(df, column, max_velocity=11):
+    """
+    Scans through 'column' row by row, computing velocity from the last valid (non-NaN) point.
+    If velocity > max_velocity, marks the current row as NaN.
+    
+    Returns:
+        outlier_count: number of points marked as outliers in this pass.
+        outlier_indices: list of indices (from df.index) that were marked as outliers.
+        outlier_values: dict mapping those indices to the original measurement value.
+    """
+    outlier_count = 0
+    outlier_indices = []
+    outlier_values = {}
+    
+    # Initialize with the first row as the last valid point.
+    last_valid_idx = 0
+    last_valid_value = df.loc[df.index[0], column]
+    last_valid_ts = df.loc[df.index[0], 'timestamp']
+
+    for i in range(1, len(df)):
+        curr_value = df.loc[df.index[i], column]
+        curr_ts = df.loc[df.index[i], 'timestamp']
+        
+        # If current value is NaN, skip updating last valid values.
+        if pd.isna(curr_value):
+            continue
+        
+        dt = (curr_ts - last_valid_ts).total_seconds()
+        if dt > 0 and last_valid_value is not None:
+            velocity = abs(curr_value - last_valid_value) / dt
+            if velocity > max_velocity:
+                df.loc[df.index[i], column] = np.nan  # Mark outlier
+                outlier_count += 1
+                outlier_indices.append(df.index[i])
+                outlier_values[df.index[i]] = curr_value  # Save original value
+                # Do not update last_valid_* because current value is invalid.
+                continue
+            else:
+                # This point is valid; update last valid references.
+                last_valid_idx = i
+                last_valid_value = curr_value
+                last_valid_ts = curr_ts
+        else:
+            last_valid_idx = i
+            last_valid_value = curr_value
+            last_valid_ts = curr_ts
+    
+    return outlier_count, outlier_indices, outlier_values
+
+
+def velocityClamping(df, max_speed=11, max_passes=10, plotting=False):
+    """
+    Corrects the distance data in the dataframe by marking outliers based on velocity.
+    In each pass, it computes the velocity from the last valid (non-NaN) measurement, marks
+    points with velocity > max_velocity as NaN, and then plots the current data along with red
+    crosses at the locations of the outliers (using their original values).
+    After all passes, a final interpolation fills the NaN values.
+    """
+    df = df.copy()  
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%H:%M:%S.%f')
+    
+    for column in df.columns:
+        if not column.startswith('b'):
+            continue
+        
+        for pass_idx in range(max_passes):
+            outlier_count, outlier_indices, outlier_values = mark_velocity_outliers(df, column, max_velocity=max_speed)
+            print(f"Pass {pass_idx} for {column}: {outlier_count} outliers")
+            
+            if plotting:
+                # Plot the current state of the data for this column
+                plt.figure(figsize=(10,4))
+                if outlier_indices:
+                    # Plot red crosses at the outlier positions, using the original values stored in outlier_values
+                    outlier_times = []
+                    outlier_vals = []
+                    for idx in outlier_indices:
+                        outlier_times.append(df.loc[idx, 'timestamp'])
+                        outlier_vals.append(outlier_values[idx])
+                    plt.plot(outlier_times, outlier_vals, 'rx-', markersize=5, label='Outliers')
+                plt.plot(df['timestamp'], df[column], 'k.-', label='Data')
+                plt.title(f"{column} - Pass {pass_idx} ({outlier_count} outliers)")
+                plt.xlabel('Timestamp')
+                plt.ylabel(column)
+                plt.legend()
+                plt.show()
+            
+            if outlier_count <= 1:
+                break
+
+    # After all passes, do a single interpolation to fill the NaN values for each beacon column.
+    # for column in df.columns:
+    #     if column.startswith('b'):
+    #         df[column].interpolate(method='linear', inplace=True)
+    df = remove_small_groups(df)
+            
+    return df
+
+
+def remove_small_groups(df, threshold=5):
+    for column in df.columns:
+        if not column.startswith('b'):
+            continue
+        
+        distances = df[column]
+        result = distances.copy()
+        group_start = None
+        first_group = True
+        for i in range(len(distances)):
+            
+            #mark the start of a group
+            if not np.isnan(distances[i]) and not first_group:
+                if group_start is None:
+                    group_start = i
+
+            #end of a cluster
+            else:
+                first_group = False
+                if group_start is not None:
+                    length = i-group_start
+                    if length <= threshold:
+                        result[group_start:i] = np.nan
+                    #we reached the end of a group, so we reset the counter
+                    group_start = None
+
+        #check if we end on a valid segment
+        if group_start is not None:
+            length = len(distances) - group_start
+            if length <= threshold:
+                result[group_start:len(distances)] = np.nan
+
+        df[column] = result
+
+    return df
+
+
+def velocityClamping_old(df, plotting=True, max_speed=11):
     """
     Corrects the distance data in the dataframe using the data from the compass
     If the player moves more than 10m away from the beacon in a second then the data is incorrect and should be corrected
@@ -448,13 +665,30 @@ def velocityClamping(df):
             if outlier_count <= 1:
                 break
             # Calculate the difference between consecutive measurements
-            df[f'{column}_vel'] = (df[column].diff()/dt).abs()
+            df[f'{column}_vel'] = abs(df[column].diff()/dt)
 
             # Identify the outliers where the difference is greater than 10 meters
-            outliers = df[f'{column}_vel'] > 9
-            outlier_count = outliers.sum()
+            outliers = df[f'{column}_vel'] > max_speed
+            outlier_indices = df.index[outliers] 
+            # Store the original (timestamp, value) before we set them to NaN
+            outlier_times = df.loc[outlier_indices, 'timestamp'].values
+            outlier_values = df.loc[outlier_indices, column].values
+            outlier_count = len(outlier_indices)
             print(f"Datapoints in {column}: ", len(df[column]))
             print(f"distance corrections for {column}: ", outlier_count)
+
+            if plotting:
+                # Plot the current state of the data for this column
+                plt.figure(figsize=(10,4))
+                plt.plot(df['timestamp'], df[column], 'k.-', label='Data')
+                if not outlier_indices.empty:
+                    # Plot red crosses at the outlier positions, using the original values stored in outlier_values
+                    plt.plot(outlier_times, outlier_values, 'rx', markersize=5, label='Outliers')
+                plt.title(f"{column} - Pass {i} ({outlier_count} outliers)")
+                plt.xlabel('Timestamp')
+                plt.ylabel(column)
+                plt.legend()
+                plt.show()
 
             # Replace outliers with NaN
             df.loc[outliers, column] = np.nan
@@ -466,6 +700,7 @@ def velocityClamping(df):
             df.drop(columns=[f'{column}_vel'], inplace=True)  
 
     return df
+    
 
 # need to replace with the actual kalman in Final-kalman
 # Need to replace with acc-bound
@@ -553,7 +788,7 @@ def distanceCorrection(df):
     for column in df.columns:
         if not column.startswith('b'):
             continue
-        df[column] = df[column]-0.8
+        df[column] = df[column]-0.5
     return df
 
 def processData(filename, tests):
@@ -632,6 +867,32 @@ def plot1d(dfs, plot=True, doc=None):
 
     return path
 
+def find_confidence(df, beacons):
+        confidence_list = []
+        for _, row in df.iterrows():
+            estimated_position = np.array([row['pos_x'], row['pos_y']])
+            #print("pos: ", estimated_position)
+            distances = np.array([row['b1d'], row['b2d'], row['b3d'], row['b4d']])
+            residuals = []
+            #print("# of beacons: ", len(beacons))
+            for i, beacon in enumerate(beacons):
+                r_i = distances[i]
+                dist_est = np.linalg.norm(estimated_position - beacon)
+                #print("dist est: ", dist_est)
+                residuals.append((dist_est - r_i)**2)
+                #print("residual: ", (dist_est - r_i)**2)
+
+            #print("residual list: ", residuals)
+            SSE = sum(residuals)
+            #print("sse: ", SSE)
+            alpha = 0.5
+            confidence = 1.0 / (1.0 + alpha* np.sqrt(SSE))
+            #print("con: ", confidence)
+            confidence_list.append(confidence)
+
+        confidence_list = np.array(confidence_list)
+        return confidence_list
+
 def plotPlayers(data, beacons, plot=True):
     """
     Plots the players' movements and 1d charts of the players' distances from each beacon, saves all plots to /charts
@@ -640,7 +901,7 @@ def plotPlayers(data, beacons, plot=True):
     df = data[1]
     
     # formated like p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y ...
-    finalPlayerPositions = pd.DataFrame()
+    finalPlayerPositions = df.copy()
 
     # tried predicting with ML model but didn't work great
     # def predict_with_model(input_data):
@@ -710,7 +971,7 @@ def plotPlayers(data, beacons, plot=True):
 
 
     for index, row in df.iterrows():
-        if index == 0: continue # skip first row
+        #if index == 0: continue # skip first row
         distances = np.array([row[col] for col in sorted(df.columns) if col.startswith('b')]) # div by 100 to convert to meters
         # distances = np.array()
         try:
@@ -719,7 +980,7 @@ def plotPlayers(data, beacons, plot=True):
             position2 = trilaterate_one(beacons[[0, 1, 3]], distances[[0, 1, 3]])
             position3 = trilaterate_one(beacons[[0, 2, 3]], distances[[0, 2, 3]])
             position4 = trilaterate_one(beacons[[1, 2, 3]], distances[[1, 2, 3]])
-            avg = np.mean([position1, position2, position3, position4], axis=0)
+            avg = np.nanmean([position1, position2, position3, position4], axis=0)
             # position_row = pd.DataFrame([np.concatenate((avg, position1, position2, position3, position4))], columns=['x', 'y', 'x1', 'y1', 'x2', 'y2', 'x3', 'y3', 'x4', 'y4'])
             # position_ml = predict_with_model(position_row)[0]
             # save avg, and individual positions
@@ -740,18 +1001,21 @@ def plotPlayers(data, beacons, plot=True):
             # ml_postions.append([np.nan, np.nan])
 
     # Add locations to a df and save to csv in case we want to analyze later
-    finalPlayerPositions['timestamp'] = df['timestamp'][1:]
-    finalPlayerPositions['x'] = [pos[0] for pos in player_positions]
-    finalPlayerPositions['y'] = [pos[1] for pos in player_positions]
-    finalPlayerPositions['x1'] = [pos[0] for pos in player_positions1]
-    finalPlayerPositions['y1'] = [pos[1] for pos in player_positions1]
-    finalPlayerPositions['x2'] = [pos[0] for pos in player_positions2]
-    finalPlayerPositions['y2'] = [pos[1] for pos in player_positions2]
-    finalPlayerPositions['x3'] = [pos[0] for pos in player_positions3]
-    finalPlayerPositions['y3'] = [pos[1] for pos in player_positions3]
-    finalPlayerPositions['x4'] = [pos[0] for pos in player_positions4]
-    finalPlayerPositions['y4'] = [pos[1] for pos in player_positions4]
+    #finalPlayerPositions['timestamp'] = df['timestamp'][1:]
+    finalPlayerPositions['pos_x'] = [pos[0] for pos in player_positions]
+    finalPlayerPositions['pos_y'] = [pos[1] for pos in player_positions]
+    # finalPlayerPositions['x1'] = [pos[0] for pos in player_positions1]
+    # finalPlayerPositions['y1'] = [pos[1] for pos in player_positions1]
+    # finalPlayerPositions['x2'] = [pos[0] for pos in player_positions2]
+    # finalPlayerPositions['y2'] = [pos[1] for pos in player_positions2]
+    # finalPlayerPositions['x3'] = [pos[0] for pos in player_positions3]
+    # finalPlayerPositions['y3'] = [pos[1] for pos in player_positions3]
+    # finalPlayerPositions['x4'] = [pos[0] for pos in player_positions4]
+    # finalPlayerPositions['y4'] = [pos[1] for pos in player_positions4]
+
+    finalPlayerPositions['confidence'] = find_confidence(finalPlayerPositions, beacons)
     finalPlayerPositions.to_csv(f'player_positions_{title}.csv', index=False)
+
 
     player_positions = np.array(player_positions)
     player_positions1 = np.array(player_positions1)
@@ -759,6 +1023,7 @@ def plotPlayers(data, beacons, plot=True):
     player_positions3 = np.array(player_positions3)
     player_positions4 = np.array(player_positions4)
     # ml_postions = np.array(ml_postions)
+
 
     df = trilaterate(df, beacons)
     #df = weighted_trilateration(df, beacons)
@@ -769,6 +1034,7 @@ def plotPlayers(data, beacons, plot=True):
     # print("std: ", np.std(df["confidence"]))
     if title != "Ground Truth":
         dfk = pipelineKalman_2d(df)
+        #dfave = pipelineKalman_2d(finalPlayerPositions)
 
     #kalman_positions = df[['pos_x', 'pos_y']].to_numpy()
     #corrected_positions = np.array(twoD_correction(kalman_positions.copy(), timestamps, 0))
@@ -780,9 +1046,10 @@ def plotPlayers(data, beacons, plot=True):
     #plt.plot(player_positions3[:, 0], player_positions3[:, 1], '.-', label='Player Path 3', alpha=0.5)
     #plt.plot(player_positions4[:, 0], player_positions4[:, 1], '.-', label='Player Path 4', alpha=0.5)
     #plt.plot(player_positions[:, 0], player_positions[:, 1], '.-', label='Player Path', alpha = 0.5) # plot the avg last
-    #plt.plot(df['pos_x'], df['pos_y'], '.-', label='ave cluster')
     if title != "Ground Truth":
         plt.plot(dfk['pos_x'], dfk['pos_y'], '.-', label='kalman and ave cluster')
+        #plt.plot(dfave['pos_x'], dfave['pos_y'], '.-', color='orange', label='kalman and ave trilat')
+    #plt.plot(df['pos_x'], df['pos_y'], '.-', label='best cluster')
     #plt.plot(corrected_positions[:, 0], corrected_positions[:, 1], '.-', label='Final (Corrected) Player Path', alpha=0.5)
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
@@ -811,14 +1078,16 @@ def main():
     # Submit the tests we want to run on our data in order [("testName", testFunction)]
     # ("Distance Correction", distanceCorrection)
     # ("EMA", smoothData)
-    # ("Kalman Filter", pipelineKalman) - doesn't work yet
+    # ("Kalman Filter", pipelineKalman) - this is the right one
     # ("Kalman Filter", kalmanFilter)
-    # ("Outlier Removal", removeOutliers)
+    # ("Outlier Removal", removeOutliers) #this is the right one
     # ("Outlier Removal", removeOutliers_dp)
     # ("Outlier Removal", removeOutliers_ts)
     # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
+    #tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping)]
     filenames = ["ObstacleTest.csv"]
+    gt_filename = "GT-obstacletest-UWB-feb5.csv"
     # show  plots or not?
     show_plots = False
     # output doc as pdf?
@@ -839,7 +1108,6 @@ def main():
         imgPath = plot1d(dfs, plot=show_plots, doc=doc)
         
         # Compare to GT Data
-        gt_filename = "GT-obstacletest-UWB-feb5.csv"
         gt_path = os.path.join(script_dir, "data", gt_filename)
         gt = loadData(gt_path)
         i = 0
@@ -850,11 +1118,11 @@ def main():
             absError(gt, df[1], title=df[0], plot=show_plots)
             i += 1
 
-        #TEMPORARY CODE TO SAVE A USEFUL CSV FOR TRILATEATION TESTING
+        """#TEMPORARY CODE TO SAVE A USEFUL CSV FOR TRILATERATION TESTING
         i=0
         for df in dfs:
             df[1].to_csv(f"processedtest{i}.csv", index=False)
-            i+=1
+            i+=1 """
 
         # Plot GT 2d Data
         # beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])

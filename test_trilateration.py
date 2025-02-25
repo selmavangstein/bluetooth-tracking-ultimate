@@ -25,14 +25,14 @@ def plot_results(beacons, distances, all_intersections, best_intersections, fina
         ax.scatter(all_intersections[:, 0], all_intersections[:, 1], color="black", marker="x", label="All intersections")
 
     # Plot best intersections in green
-    if best_intersections != None and best_intersections.size > 0:
-        ax.scatter(best_intersections[:, 0], best_intersections[:, 1], color="green", marker="x", label="Best intersections")
+    #if best_intersections != None and best_intersections.size > 0:
+    ax.scatter(best_intersections[:, 0], best_intersections[:, 1], color="green", marker="x", label="Best intersections")
 
     # Plot final estimated position in red
     ax.scatter(*final_position, color="red", marker="*", s=200, label="Final estimated position")
 
     #ax.set_xlim(beacons[:, 0].min() - 2, beacons[:, 0].max() + 2)
-    #ax.set_ylim(beacons[:, 1].min() - 2, beacons[:, 1].max() + 2)
+    #ax.set_ylim(beacons[:, 1].min() - 2, beacons[:, 1].max() + 2) 
     ax.set_xlabel("X coordinate")
     ax.set_ylabel("Y coordinate")
     ax.set_title(f"Trilateration with Best Intersection Points at {timestamp.time()}")

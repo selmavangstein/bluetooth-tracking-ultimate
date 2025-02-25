@@ -149,28 +149,29 @@ def find_best_intersections2(beacons, distances):
     """Detects the densest cluster and finds its centroid. 
     Returns the centroid and the associated confidence interval."""
     all_intersections = []  # Store all intersection points found
-    #best_beacons = None
-    #best_intersections = None
-    #final_position = None
-    #min_avg_distance = float('inf')
     estimated_position = np.array([None, None])
     best_cluster_points = None
+    distances = np.array(distances, dtype=float)
 
-    # Iterate over all possible sets of 3 beacons
-    #can simplify this part a lot if we just want to find all intersections
-    #also want to throw out all intersections that are outside of the field
-        #be careful about this though, if they run along the edge, this might be valuable data.
-        #maybe have like a margin of a few meters outside of the field
-    all_intersections = []
+    #ignore nans
+    valid_mask = ~np.isnan(distances)
+    beacons = beacons[valid_mask]
+    distances = distances[valid_mask]
 
     # Compute intersections for all unique beacon pairs
+    if len(beacons)<2:
+        estimated_position = np.array([100,100])
+        confidence = 0
+        all_intersections = np.array([])
+        best_cluster_points = np.array([])
+        return estimated_position, confidence, all_intersections, best_cluster_points
+    
     for i, j in itertools.combinations(range(len(beacons)), 2):
         intersections = circle_intersections(beacons[i], distances[i], beacons[j], distances[j])
         all_intersections.extend(intersections)  
 
     # Convert to NumPy array
-    all_intersections = np.array(all_intersections)
-        # Apply DBSCAN
+    all_intersections = np.array(all_intersections) # Apply DBSCAN
     eps = 2  # Maximum distance between points in a cluster
     eps_max = 60
     min_samples = 2  # Minimum points to form a cluster
@@ -180,6 +181,11 @@ def find_best_intersections2(beacons, distances):
 
     while np.all(estimated_position == np.array([None, None])):
         #print("scanning for clusters...", eps)
+        if eps > eps_max:
+            estimated_position = np.mean(all_intersections, axis=0)
+            best_cluster_points = all_intersections
+            #print("exceeded eps limit")
+            break
         db = DBSCAN(eps=eps, min_samples=min_samples).fit(all_intersections)
         labels = np.array(db.labels_)
         valid_clusters = labels[labels != -1]
@@ -206,22 +212,24 @@ def find_best_intersections2(beacons, distances):
                 valid_clusters = labels[labels != -1]
                 eps +=2
         else:
-            if eps > eps_max:
-                estimated_position = np.mean(all_intersections, axis=0)
-                best_cluster_points = all_intersections
-                break
             eps +=2
+            #print("increased eps, retrying")
 
 
     residuals = []
     for i, beacon in enumerate(beacons):
+        #print("pos: ", estimated_position)
         r_i = distances[i]
         dist_est = np.linalg.norm(estimated_position - beacon)
         residuals.append((dist_est - r_i)**2)
+        #print("res: (dist_est - r_i)**2")
 
     SSE = sum(residuals)
+    #print(SSE)
     alpha = 0.5
     confidence = 1.0 / (1.0 + alpha* np.sqrt(SSE))
+    #print("confidence: ", confidence)
+
     #cluster_size = len(best_cluster_points)
     #spread = np.mean(np.linalg.norm(best_cluster_points - estimated_position, axis=1))
     #alpha = 10e5  # Tune this parameter; higher alpha means more sensitivity.
@@ -230,6 +238,7 @@ def find_best_intersections2(beacons, distances):
     #confidence = 1.0 / (spread*0.5 + 1)
     #if we use this - no current best_beacons data
     #so change the return or implement a way of finding it
+
     return estimated_position, confidence, all_intersections, best_cluster_points
 
 def plot_results(beacons, distances, all_intersections, best_intersections, final_position):
@@ -309,8 +318,11 @@ def trilaterate(df, beacon_positions):
 
         except ValueError:
             # If trilateration fails, append NaN
+            print("trilateration threw an error")
             pos_x.append(np.nan)
             pos_y.append(np.nan)
+            confidence_list.append(np.nan)
+
 
     # Add computed positions to the DataFrame
     df_result['pos_x'] = pos_x

@@ -37,7 +37,7 @@ def pos_vel_filter(x, P, R, Q=0., dt=1.):
 def kalman_filter(zs, ta, times, smoothing=True):
     '''Takes measurements and timestamps (must be on datetime format). Returns filtered data'''
 
-    times = pd.to_datetime(times)
+    times = pd.to_datetime(times, format='%H:%M:%S.%f')
     time_differences = times.diff()
     average_difference = time_differences.dt.total_seconds().mean()
     dt = average_difference
@@ -47,7 +47,7 @@ def kalman_filter(zs, ta, times, smoothing=True):
     Q = Q_discrete_white_noise(dim=3, dt=dt, var=20*dt) #process noise.
     R = np.array([[0.2]]) #measurement covariance matrix /sensor variance.
 
-    f = pos_vel_filter(x, P, R, Q, dt)
+    f = pos_vel_filter(x, P, R, Q, dt) 
     s = Saver(f)
 
     #setting parameters for extra controls within the filter
@@ -75,8 +75,8 @@ def kalman_filter(zs, ta, times, smoothing=True):
     residual_var_too_high = 0
 
     for i in range(len(zs)):
-
         f.predict()
+        z = zs[i]
 
         #clamp esitmated acceleration
         estimated_acc = abs(f.x[2])
@@ -84,17 +84,13 @@ def kalman_filter(zs, ta, times, smoothing=True):
             acc_too_high += 1  
             f.x[2] = np.sign(f.x[2]) * ta[i]
 
-        #uses the magnitude of the acceleration along with estimated velocity as a max limit for position change
-        z = zs[i]
-        """ 
-        if i>=1:
-            max_pos_change = abs(f.x[1]) * dt + 0.5 * ta[i]* dt**2
-            predicted_change = abs(f.x[0] - zs[i-1])
-            if predicted_change > max_pos_change:
-                delta_pos_too_high +=1
-                #zs[i] = f.x[0]  #Replace measurement with model prediction - this worked horribly wrong.
-                z = zs[i-1] + np.sign(f.x[1]) * max_pos_change #clamp position change """
-                
+        if np.isnan(z):
+            z=f.x[0]
+            #f.update(z)
+            s.save()
+            s.x[-1][0] = np.nan
+            s.x[-1][1] = np.nan
+            continue                
 
         #compute innovation and innovation covariance S
         innovation = z - f.x[0] #innovation is difference between prediction and measurement
@@ -133,11 +129,6 @@ def kalman_filter(zs, ta, times, smoothing=True):
                 inflation_steps_countdown = inflation_steps
 
 
-        #dynamically updating R as we go - might not want this anymore, as outliers are handled above
-        #rolling_variance = (1 - alpha) * rolling_variance + alpha * (new_residual**2)  # EWMA update
-        #f.R = np.array([[float(rolling_variance)]])  # Update filter's R
-
-
     print(f"Acceleration clamped: {acc_too_high}")
     print(f"Position change clamped: {delta_pos_too_high}")
     print(f"R inflated due to stdev: {stdev_too_high}")
@@ -150,7 +141,8 @@ def kalman_filter(zs, ta, times, smoothing=True):
     if smoothing:
         smooth_xs, smooth_cov, _, _ = f.rts_smoother(xs, covs)
 
-    residualcheck(s, R)
+    #residualcheck(s, R)
+
     #this returns a saver object with all the information about the filter
     return s, smooth_xs
 
