@@ -180,6 +180,8 @@ def pipelineRemoveOutliers(df, window_size=20, residual_variance_threshold=0.8):
     for column in df.columns:
         if not column.startswith('b'):
             continue
+
+        df[column] = df[column].ffill() # forward fill those NaN values 
         
         df[f'{column}_obstacle_detected'] = detect_obstacles(df[column], residual_variance_threshold, window_size)
         adjusted_col_data = df[column].copy().astype(float)
@@ -232,6 +234,8 @@ def removeOutliers(df, window_size=10, residual_variance_threshold=1.5):
     for column in df.columns:
         if not column.startswith('b'):
             continue
+                   
+        df[column] = df[column].ffill()
 
         df[f'{column}_residual_variance'] = df[column].rolling(window=window_size).apply(residual_variance, raw=True)
 
