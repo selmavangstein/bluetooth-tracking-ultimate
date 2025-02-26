@@ -13,12 +13,14 @@ def clean(logFilePath, newFileNamePath):
     with open(logFilePath, 'r') as f:
         lines = f.readlines()
 
+    lines = lines[1:]
+
     with open(newFileNamePath, 'w') as f:
-        f.write("timestamp,wearabletimestamp,b1d,b2d,b3d,b4d,xa,ya,za\n")
+        f.write("timestamp,playerid,wearabletimestamp,b1d,b2d,b3d,b4d,xa,ya,za\n")
         for line in lines:
             # if line is not in lof format, skip
-            # if not line.startswith("["):
-            #     continue
+            if not line.startswith("["):
+                continue
             line = line.replace("[", "")
             line = line.replace("] ", ",")
             line = line.replace(" ", "")
