@@ -1060,6 +1060,8 @@ def plotPlayers(data, beacons, plot=True):
     if title != "Ground Truth":
         plt.plot(dfk['pos_x'], dfk['pos_y'], '.-', label='kalman and ave cluster')
         #plt.plot(dfave['pos_x'], dfave['pos_y'], '.-', color='orange', label='kalman and ave trilat')
+    else:
+        plt.plot(player_positions[:,0], player_positions[:,1], '.-', alpha=alpha, color='blue') # plot the avg last
     # plt.legend(['Player Path 1', 'Player Path 2', 'Player Path 3', 'Player Path 4', 'Player Path', 'New Trilateration', 'Final (Corrected) Player Path'])
     plt.scatter(beacons[:, 0], beacons[:, 1], c='red', marker='x', label='Beacons')
     plt.xlabel('X Position')
@@ -1096,8 +1098,8 @@ def main():
     # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
     #tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping)]
-    filenames = ["ObstacleTest.csv"]
-    gt_filename = "GT-obstacletest-UWB-feb5.csv"
+    filenames = ["feb23/t1-aroundsquare.csv"]
+    gt_filename = "feb23/t1-aroundsquare-groundtruth.csv"
     # show  plots or not?
     show_plots = False
     # output doc as pdf?
@@ -1138,7 +1140,8 @@ def main():
         # beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
         #beaconPositions = np.array([[15, 0], [15, 20], [0, 0], [0, 20]])
         #beaconPositions = np.array([[0, 0], [15, 0], [0, 20], [15, 20]])
-        beaconPositions = np.array([[0, 0], [12, 0], [0, 18], [12, 18]])  
+        #beaconPositions = np.array([[0, 0], [12, 0], [0, 18], [12, 18]])
+        beaconPositions = np.array([[0, 0], [28.7, 0], [28.7, 25.7], [0, 25.7]])  
         imgPath = plotPlayers(("Ground Truth", gt), beaconPositions, plot=False)
         add_section(doc, sectionName="Ground Truth", sectionText="", imgPath=imgPath, caption="Ground Truth Player Movement Path")
 
