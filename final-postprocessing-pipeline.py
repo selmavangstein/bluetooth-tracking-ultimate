@@ -1033,11 +1033,11 @@ def plotPlayers(data, beacons, plot=True):
     # print("ave: ", np.mean(df["confidence"]))
     # print("std: ", np.std(df["confidence"]))
     if title != "Ground Truth":
-        dfk = pipelineKalman_2d(df)
-        #dfave = pipelineKalman_2d(finalPlayerPositions)
+        dfk = pipelineKalman_2d(df, beacons)
+        #dfave = pipelineKalman_2d(finalPlayerPositions, beacons)
 
-    kalman_positions = df[['pos_x', 'pos_y']].to_numpy()
-    corrected_positions = np.array(twoD_correction(kalman_positions.copy(), timestamps, 0))
+    #kalman_positions = df[['pos_x', 'pos_y']].to_numpy()
+    #corrected_positions = np.array(twoD_correction(kalman_positions.copy(), timestamps, 0))
 
     # Plot player positions
     plt.figure(figsize=(10, 6))
@@ -1047,12 +1047,12 @@ def plotPlayers(data, beacons, plot=True):
         # plt.plot(player_positions2[i:i+2, 0], player_positions2[i:i+2, 1], 'o-', alpha=alpha, color='green')
         # plt.plot(player_positions3[i:i+2, 0], player_positions3[i:i+2, 1], 'o-', alpha=alpha, color='purple')
         # plt.plot(player_positions4[i:i+2, 0], player_positions4[i:i+2, 1], 'o-', alpha=alpha, color='orange')
-        plt.plot(player_positions[i:i+2, 0], player_positions[i:i+2, 1], 'o-', alpha=alpha, color='blue') # plot the avg last
+        #plt.plot(player_positions[i:i+2, 0], player_positions[i:i+2, 1], '.-', alpha=alpha, color='blue') # plot the avg last
     
-        plt.plot(corrected_positions[i:i+2, 0], corrected_positions[i:i+2, 1], 'o-', alpha=alpha, color='red')
+        #plt.plot(corrected_positions[i:i+2, 0], corrected_positions[i:i+2, 1], 'o-', alpha=alpha, color='red')
     
-    plt.plot(df['pos_x'], df['pos_y'], '.-', alpha=alpha)
-    
+    #plt.plot(df['pos_x'], df['pos_y'], '.-', alpha=alpha)
+
     if title != "Ground Truth":
         plt.plot(dfk['pos_x'], dfk['pos_y'], '.-', label='kalman and ave cluster')
         #plt.plot(dfave['pos_x'], dfave['pos_y'], '.-', color='orange', label='kalman and ave trilat')

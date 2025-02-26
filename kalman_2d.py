@@ -37,11 +37,14 @@ def pos_vel_filter_2d(x, P, R, Q=0., dt=1.):
 
     return kf
 
-def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, smoothing=True):
+def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoothing=True):
     '''Takes x, y measurements and timestamps. Returns filtered data.'''
 
     times = pd.to_datetime(times, format='%H:%M:%S.%f')
     dt = times.diff().dt.total_seconds().mean()
+
+    x_min, y_min = np.min(beacon_pos, axis=0)
+    x_max, y_max = np.max(beacon_pos, axis=0)
 
     # Initial state [x, y, vx, vy, ax, ay]
     x = np.array([zs_x[0], zs_y[0], 0, 0, 0, 0])
@@ -105,8 +108,8 @@ def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, smoothing=True):
         s.save()
 
         #fix this hardcoding
-        f.x[0] = np.clip(f.x[0], -2, 14)
-        f.x[1] = np.clip(f.x[1], -2, 20)
+        f.x[0] = np.clip(f.x[0], x_min-2, x_max+2)
+        f.x[1] = np.clip(f.x[1], y_min-2, y_max+2)
 
     s.to_array()
     xs = s.x
@@ -120,7 +123,7 @@ def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, smoothing=True):
     print("inflated R's: ", inflated_R_counter)
     return s, smooth_xs
 
-def pipelineKalman_2d(df, ave=True):
+def pipelineKalman_2d(df, beacon_pos, ave=True):
     df = df.copy()  
     df = find_acceleration_magnitude(df)  # Adds acceleration vectors to the df
 
@@ -130,7 +133,7 @@ def pipelineKalman_2d(df, ave=True):
     times = df['timestamp']
     confidence_factor = df['confidence']
 
-    s, smooth_xs = kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, smoothing=True)
+    s, smooth_xs = kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoothing=True)
 
     df['pos_x'] = s.x[:, 0]
     df['pos_y'] = s.x[:, 1]
