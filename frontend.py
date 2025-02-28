@@ -95,23 +95,31 @@ if st.button("Start Pipeline"):
         st.write("Invalid input. Using default beacon positions.")
         beacon_positions = default_beacon_positions
 
-    st.write("Beacon positions:", beacon_positions)
+    # st.write("Beacon positions:", beacon_positions)
 
     logFilePath = logFilePath.split(".")[0]
 
     # Add the cleaned data to the report
     data = (logFilePath, df)
 
-    # 1d plots
-    plot1d([data], plot=False, doc=doc)
+    # Show loading spinner while generating plots
+    with st.spinner("Generating plots... (this could take a while)"):
+        # 1d plots
+        plot1d([data], plot=False, doc=doc)
 
-    # Plot the final DFs
-    imgPath = plotPlayers(data, beacon_positions, plot=False)
-    print(imgPath)
+        # Plot the final DFs
+        plotted = plotPlayers(data, beacon_positions, plot=False)
+        imgPath = plotted[0]
+        animated = plotted[1]
+
     add_section(doc, sectionName=data[0], sectionText="", imgPath=imgPath, caption="Final Player Movement Path")
 
+    
+    # Add the animated mp4 to the site
+    st.video(animated, format="video/mp4", start_time=0, loop=True, autoplay=True)
+    # add images to the site
     st.image(imgPath, caption="Player Movement Path")
-
+    
     gen_pdf(doc, logFilePath+"_report")
 
     # Provide a download link for the generated PDF
