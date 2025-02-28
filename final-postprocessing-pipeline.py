@@ -286,7 +286,7 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
         return np.var(residuals) # Return variance of residuals
     
     # Replaces outliers in the window, only considering large spikes over 0.5
-    def replace_with_fit(y):
+    def replace_with_fit(y, window):
         if len(y) < 2:
             return y
         x = np.arange(len(y)).reshape(-1, 1)
@@ -347,7 +347,7 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
             return fitted_line1
         
     # Replaces outliers in the adjusted window, now considering large spikes below 0.5 as well. 
-    def replace_fit(y, window):
+    def replace_fit(y):
         if len(y) < 2:
             return y
         x = np.arange(len(y)).reshape(-1, 1)
@@ -391,7 +391,7 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
 
             if df[f'{column}_obstacle_detected'].loc[start_time:end_time].any(): # if true for any value in window
                 window = adjusted_col_data.loc[start_time:end_time].values
-                replacement_vals = replace_fit(replace_with_fit(window), window) # replacement_vals = fitted line
+                replacement_vals = replace_with_fit(replace_fit(window), window) # replacement_vals = fitted line
                 adjusted_index = adjusted_col_data.loc[start_time:end_time].index
                 adjusted_col_data.loc[adjusted_index] = replacement_vals
 
@@ -1066,7 +1066,7 @@ def main():
     # ("Outlier Removal", removeOutliers_dp)
     # ("Outlier Removal", removeOutliers_ts)
     # ("Plot", plotPlayers)
-    tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
+    tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers_ts), ("Velocity Clamping", velocityClamping), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
     #tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping)]
     filenames = ["feb23/t1-aroundsquare.csv"]
     gt_filename = "feb23/t1-aroundsquare-groundtruth.csv"
