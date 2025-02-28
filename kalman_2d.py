@@ -135,7 +135,9 @@ def pipelineKalman_2d(df, beacon_pos, ave=True):
 
     s, smooth_xs = kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoothing=True)
 
-    df['pos_x'] = s.x[:, 0]
-    df['pos_y'] = s.x[:, 1]
+    # df['pos_x'] = s.x[:, 0]
+    # df['pos_y'] = s.x[:, 1]
+    df['pos_x'] = smooth_xs[:, 0]
+    df['pos_y'] = smooth_xs[:, 1]
 
     return df
