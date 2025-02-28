@@ -87,13 +87,13 @@ def removeOutliers_dp(df, window_size=20, residual_variance_threshold=0.8):
     
     return df
 
-def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
+def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
     """Removes outliers from a dataframe using a rolling residual variance threshold and standard deviation.
 
     Args:
         df (pandas df): _description_
-        window_time (str): _description_. Defaults to 2000ms (10 timestamps per second, however may need to be changed).
-        residual_variance_threshold (float, optional): _description_. Defaults to 0.8.
+        window_time (str): _description_. Defaults to 800ms.
+        residual_variance_threshold (float, optional): _description_. Defaults to 0.5.
 
     Returns:
         pandas df: df of the same format as the input with all the outliers removed
@@ -116,8 +116,70 @@ def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
         fitted_line = model.predict(x) # Predict the linear trend
         residuals = y - fitted_line # Calculate residuals
         return np.var(residuals) # Return variance of residuals
-
+    
+    # Replaces outliers in the window, only considering large spikes over 0.5
     def replace_with_fit(y):
+        if len(y) < 2:
+            return y
+        x = np.arange(len(y)).reshape(-1, 1)
+        model1 = LinearRegression()
+        model1.fit(x,y)
+        fitted_line1 = model1.predict(x)
+        
+        # Compares the difference between each data point minus the median of the window against the threshold
+        # and gives it a boolean value not taking np.abs
+        no_outliers = (y - np.median(y)) < 0.5
+
+        # Replace vlaues that are outliers with Nan
+        false_index = np.where(no_outliers == False)[0] 
+        false = 0
+        if false_index.any():
+            for val in false_index:
+                false = val
+                y[false] = np.nan
+
+        # New linear fit line without outlier points
+        if np.sum(no_outliers) >= 2:
+            model2 = LinearRegression()
+            model2.fit(x[no_outliers], y[no_outliers])
+            fitted_line2 = model2.predict(x) # fitted_line2 = y of model2.fit
+            return fitted_line2
+        else:
+            return fitted_line1
+    
+    # Function that replaces with fit for the OG window if not enough inlier points are in our adjusted window
+    def replace_with(y):
+        if len(y) < 2:
+            return y
+        x = np.arange(len(y)).reshape(-1, 1)
+
+        nan_i = []
+        for i in range(len(y)): 
+            if np.isnan(y[i]):
+                nan_i.append(i)
+                y[i] = (len(y) // 2)
+                
+        model1 = LinearRegression()
+        model1.fit(x,y)
+        fitted_line1 = model1.predict(x)
+
+        no_outliers = np.abs(y - np.median(y)) < 0.5
+
+        for i in range(len(y)): 
+            if i in nan_i:
+                y[i] = np.nan
+
+        # New linear fit line without outlier points
+        if np.sum(no_outliers) >= 2:
+            model2 = LinearRegression()
+            model2.fit(x[no_outliers], y[no_outliers])
+            fitted_line2 = model2.predict(x) # fitted_line2 = y of model2.fit
+            return fitted_line2
+        else:
+            return fitted_line1
+        
+    # Replaces outliers in the adjusted window, now considering large spikes below 0.5 as well. 
+    def replace_fit(y, window):
         if len(y) < 2:
             return y
         x = np.arange(len(y)).reshape(-1, 1)
@@ -126,28 +188,18 @@ def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
         fitted_line1 = model1.predict(x)
         residuals = y - fitted_line1 
 
-        # Deviation in relation to the fitted line
-        std_res = np.std(residuals)
+        no_outliers = np.abs(y - np.median(y)) < 0.5
 
-        # No outliers to remove
-        if std_res == 0:
-            return fitted_line1
-
-        # Compares the residuals with the threshold and sets it to either true or false for each data point in the window
-        no_outliers = np.abs(residuals) < (residual_variance_threshold *std_res)
-        
         # New linear fit line without outlier points
         if np.sum(no_outliers) >= 2:
             model2 = LinearRegression()
-            local_minima = float(min(y[no_outliers]))
-            new_window = [local_minima] * len(y[no_outliers])
-            model2.fit(x[no_outliers], new_window)
-            fitted_line2 = model2.predict(x)
+            model2.fit(x[no_outliers], y[no_outliers])
+            fitted_line2 = model2.predict(x) # fitted_line2 = y of model2.fit
             return fitted_line2
         else:
-            return fitted_line1
-
-    # Detect obstacles based on residual variance
+            return replace_with(window)
+        
+    # Detect obstacles based on residual variance and creates a boolean col in our df whether it is an outlier or not
     def detect_obstacles(data, residual_variance_threshold, window_time):
         residual_variances = data.rolling(window_time).apply(residual_variance, raw=True)
         residual_variances.dropna(inplace=True)
@@ -160,19 +212,18 @@ def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
             continue
         
         # Dealing with NaN values
-        df[column] = pd.to_numeric(df[column], errors='coerce')
         df[column] = df[column].ffill()
 
         df[f'{column}_obstacle_detected'] = detect_obstacles(df[column], residual_variance_threshold, window_time)
         adjusted_col_data = df[column].copy().astype(float)
-
+        
         for current_time in df.index:
             start_time = current_time - (pd.Timedelta(window_time) / 2)
             end_time   = current_time + (pd.Timedelta(window_time) / 2)
 
-            if df[f'{column}_obstacle_detected'].loc[start_time:end_time].any():
+            if df[f'{column}_obstacle_detected'].loc[start_time:end_time].any(): # if true for any value in window
                 window = adjusted_col_data.loc[start_time:end_time].values
-                replacement_vals = replace_with_fit(window)
+                replacement_vals = replace_fit(replace_with_fit(window), window) # replacement_vals = fitted line
                 adjusted_index = adjusted_col_data.loc[start_time:end_time].index
                 adjusted_col_data.loc[adjusted_index] = replacement_vals
 
@@ -180,6 +231,7 @@ def removeOutliers_ts(df, window_time='1s', residual_variance_threshold=0.8):
 
     # Timestamps are indexed, need to be back in forms of cols
     df.reset_index(inplace=True)
+    df = df.loc[:, :'za']
     return df
 
 def main():
