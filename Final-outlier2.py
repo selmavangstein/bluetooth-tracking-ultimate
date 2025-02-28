@@ -227,7 +227,8 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
                 adjusted_index = adjusted_col_data.loc[start_time:end_time].index
                 adjusted_col_data.loc[adjusted_index] = replacement_vals
 
-        df[f'{column}_adjusted'] = adjusted_col_data
+        # df[f'{column}_adjusted'] = adjusted_col_data
+        df[column] = adjusted_col_data
 
     # Timestamps are indexed, need to be back in forms of cols
     df.reset_index(inplace=True)
