@@ -27,40 +27,156 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import FinalOutlier2 # File name needs to be changed 
 
-df = pd.read_csv("2-9-test3-uwb.csv")  
-df_read = FinalOutlier2.removeOutliers_ts(df) 
+from final_postprocessing_pipeline import *
+from cleanrawoutput import clean
 
-st.title("Charts of Original Measurement Lines Compared to Outlier Adjusted Lines 📊")
-st.write("This frontend visualizes plots of original measurement lines compared to outlier adjusted lines for each beacon.")
+df = ""
+logFilePath = "streamlit.log"
+newFileNamePath = "streamlitcleaneddata.csv"
+
+st.title("BTU Comps")
+st.write("Please upload the raw output from the beacon")
+
+uploaded_file = st.file_uploader("Choose a file", type=["log", "txt"])
+if uploaded_file is not None:
+    # Save the uploaded file to disk
+    with open(f"{logFilePath}", "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    st.write("File saved successfully!")
+else:
+    st.write("Please upload a file to proceed.")
+
+
+# clean the raw output
+st.write("Cleaning the raw output...")
+clean(logFilePath, newFileNamePath)
+
+# test selection
+tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
+st.write("Select the tests you want to run:")
+selected_tests = st.multiselect(
+    "Cleaning",
+    [test[0] for test in tests],
+    default=[test[0] for test in tests]
+)
+
+# Ask the user to input beacon positions or use defaults
+default_beacon_positions = np.array([[0, 0], [28.7, 0], [28.7, 25.7], [0, 25.7]])  
+
+st.write("Please input the beacon positions or use the default values:")
+beacon_positions_input = st.text_area(
+    "Enter beacon positions as a list of lists (e.g., [[0, 0], [28.7, 0], [28.7, 25.7], [0, 25.7]])",
+    value=str(default_beacon_positions.tolist())
+)
+
+# Add a button to start the pipeline
+if st.button("Start Pipeline"):
+    # run pipeline on the cleaned data
+    # start report
+    doc = Document()
+    gen_title(doc, author="RF Positioning Report")
+    
+    # Filter the tests based on user selection
+    tests_to_run = [test for test in tests if test[0] in selected_tests]
+
+    # Load the cleaned data
+    df = pd.read_csv(newFileNamePath)
+
+    # Run the selected tests
+    for test_name, test_func in tests_to_run:
+        with st.spinner(f"Running {test_name}..."):
+            df = test_func(df)
+        st.success(f"{test_name} completed.")
+
+    try:
+        beacon_positions = np.array(eval(beacon_positions_input))
+    except:
+        st.write("Invalid input. Using default beacon positions.")
+        beacon_positions = default_beacon_positions
+
+    st.write("Beacon positions:", beacon_positions)
+
+    logFilePath = logFilePath.split(".")[0]
+
+    # Add the cleaned data to the report
+    data = (logFilePath, df)
+
+    # 1d plots
+    plot1d([data], plot=False, doc=doc)
+
+    # Plot the final DFs
+    imgPath = plotPlayers(data, beacon_positions, plot=False)
+    print(imgPath)
+    add_section(doc, sectionName=data[0], sectionText="", imgPath=imgPath, caption="Final Player Movement Path")
+
+    st.image(imgPath, caption="Player Movement Path")
+
+    gen_pdf(doc, logFilePath+"_report")
+
+    # Provide a download link for the generated PDF
+    with open(logFilePath+"_report.pdf", "rb") as pdf_file:
+        st.download_button(
+            label="Download Report",
+            data=pdf_file,
+            file_name=logFilePath.split("/")[-1]+"_report.pdf",
+            mime="application/pdf"
+        )
+
+    # ask the user if they want to restart the pipeline
+    if st.button("Restart Pipeline"):
+        st.caching.clear_cache()
+        st.experimental_rerun()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Extract columns 
-b_columns = []
-for column in df.columns:
-    if not column.startswith('b'):
-        continue
-    else:
-        b_columns.append(column)
+# b_columns = []
+# for column in df.columns:
+#     if not column.startswith('b'):
+#         continue
+#     else:
+#         b_columns.append(column)
 
-# Tabs for Chart and Dataframe
-tab1, tab2 = st.tabs(["Chart", "Dataframe"])
+# # Tabs for Chart and Dataframe
+# tab1, tab2 = st.tabs(["Chart", "Dataframe"])
 
-# Plotting
-with tab1:
-    st.write("Measurement Line vs Outlier Adjusted Line")
+# # Plotting
+# with tab1:
+#     st.write("Measurement Line vs Outlier Adjusted Line")
 
-    for column in b_columns:
-        fig, ax = plt.subplots()
-        ax.plot(df_read['timestamp'], df_read[column], label=f"Original {column}")
-        ax.plot(df_read['timestamp'], df_read[f'{column}_adjusted'], label=f"Adjusted {column}")
-        ax.set_xlabel("Timestamp")
-        ax.set_ylabel("Distance")
-        ax.set_title(f"Comparison for {column}")
-        ax.legend()
-        st.pyplot(fig) 
+#     for column in b_columns:
+#         fig, ax = plt.subplots()
+#         ax.plot(df_read['timestamp'], df_read[column], label=f"Original {column}")
+#         ax.plot(df_read['timestamp'], df_read[f'{column}_adjusted'], label=f"Adjusted {column}")
+#         ax.set_xlabel("Timestamp")
+#         ax.set_ylabel("Distance")
+#         ax.set_title(f"Comparison for {column}")
+#         ax.legend()
+#         st.pyplot(fig) 
 
-# Original df
-with tab2:
-    st.write("Original Data for Each Beacon ")
-    st.dataframe(df, height=400, use_container_width=True)
+# # Original df
+# with tab2:
+#     st.write("Original Data for Each Beacon ")
+#     st.dataframe(df, height=400, use_container_width=True)

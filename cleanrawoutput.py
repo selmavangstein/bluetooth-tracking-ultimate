@@ -6,7 +6,7 @@ Cleans the raw output from the beacon and converts it into a correctly formatted
 def clean(logFilePath, newFileNamePath):
     """
     Cleans log file wil format like so:
-    [16:36:23.182] 1350063,23.11,21.66,22.91,24.13,-0.51,10.04,5.33
+    [16:36:23.182],playerid,1350063,23.11,21.66,22.91,24.13,-0.51,10.04,5.33
     turns into csv
     """
 

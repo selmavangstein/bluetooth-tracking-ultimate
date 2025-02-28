@@ -55,7 +55,7 @@ def gen_pdf(doc, title):
     """
     # set cur dir to bluetooth-tracking-ultimate
     
-    doc.generate_pdf(title, clean_tex=False)  # Set clean_tex=True to remove .tex file after compilation
+    doc.generate_pdf(title, clean_tex=True)  # Set clean_tex=True to remove .tex file after compilation
     print("PDF generated")
 
 if __name__ == '__main__':
