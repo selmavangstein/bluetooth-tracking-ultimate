@@ -762,7 +762,7 @@ def distanceCorrection(df):
     for column in df.columns:
         if not column.startswith('b'):
             continue
-        df[column] = df[column]-0.5
+        df[column] = df[column]-0.8
     return df
 
 def processData(filename, tests):
