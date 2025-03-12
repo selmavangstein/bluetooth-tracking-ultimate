@@ -402,6 +402,8 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
     # Timestamps are indexed, need to be back in forms of cols
     df.reset_index(inplace=True)
     df = df.loc[:, :'za']
+
+    df.to_csv(f"processedRemoveOutliers.csv", index=False)
     return df
 
 def velocityClamping_noplot(df):
@@ -500,7 +502,6 @@ def mark_velocity_outliers(df, column, max_velocity=11):
     outlier_values = {}
     
     # Initialize with the first row as the last valid point.
-    last_valid_idx = 0
     last_valid_value = df.loc[df.index[0], column]
     last_valid_ts = df.loc[df.index[0], 'timestamp']
 
@@ -520,15 +521,13 @@ def mark_velocity_outliers(df, column, max_velocity=11):
                 outlier_count += 1
                 outlier_indices.append(df.index[i])
                 outlier_values[df.index[i]] = curr_value  # Save original value
-                # Do not update last_valid_* because current value is invalid.
+                #Do not update last_valid_* because current value is invalid.
                 continue
             else:
-                # This point is valid; update last valid references.
-                last_valid_idx = i
+                #This point is valid; update last valid references.
                 last_valid_value = curr_value
                 last_valid_ts = curr_ts
         else:
-            last_valid_idx = i
             last_valid_value = curr_value
             last_valid_ts = curr_ts
     
@@ -564,7 +563,7 @@ def velocityClamping(df, max_speed=11, max_passes=10, plotting=False):
                     for idx in outlier_indices:
                         outlier_times.append(df.loc[idx, 'timestamp'])
                         outlier_vals.append(outlier_values[idx])
-                    plt.plot(outlier_times, outlier_vals, 'rx-', markersize=5, label='Outliers')
+                    plt.plot(outlier_times, outlier_vals, 'rx', markersize=5, label='Outliers')
                 plt.plot(df['timestamp'], df[column], 'k.-', label='Data')
                 plt.title(f"{column} - Pass {pass_idx} ({outlier_count} outliers)")
                 plt.xlabel('Timestamp')
@@ -575,16 +574,16 @@ def velocityClamping(df, max_speed=11, max_passes=10, plotting=False):
             if outlier_count <= 1:
                 break
 
-    # After all passes, do a single interpolation to fill the NaN values for each beacon column.
-    # for column in df.columns:
-    #     if column.startswith('b'):
-    #         df[column].interpolate(method='linear', inplace=True)
-    df = remove_small_groups(df)
-            
+        # After all passes, do a single interpolation to fill the NaN values for each beacon column.
+        # for column in df.columns:
+        #     if column.startswith('b'):
+        #         df[column].interpolate(method='linear', inplace=True)
+
+    df = remove_small_groups(df, threshold=20, plotting=False)
     return df
 
 
-def remove_small_groups(df, threshold=5):
+def remove_small_groups(df, threshold=5, plotting=False):
     for column in df.columns:
         if not column.startswith('b'):
             continue
@@ -593,6 +592,7 @@ def remove_small_groups(df, threshold=5):
         result = distances.copy()
         group_start = None
         first_group = True
+        removed_indices = []
         for i in range(len(distances)):
             
             #mark the start of a group
@@ -606,7 +606,8 @@ def remove_small_groups(df, threshold=5):
                 if group_start is not None:
                     length = i-group_start
                     if length <= threshold:
-                        result[group_start:i] = np.nan
+                        result.iloc[group_start:i] = np.nan
+                        removed_indices.extend(range(group_start, i))
                     #we reached the end of a group, so we reset the counter
                     group_start = None
 
@@ -614,9 +615,26 @@ def remove_small_groups(df, threshold=5):
         if group_start is not None:
             length = len(distances) - group_start
             if length <= threshold:
-                result[group_start:len(distances)] = np.nan
+                result.iloc[group_start:len(distances)] = np.nan
+                removed_indices.extend(range(group_start, len(distances)))
 
         df[column] = result
+
+        if plotting:
+            plt.figure(figsize=(10, 4))
+            # Plot the filtered data as a black line with markers.
+            plt.plot(df['timestamp'], result, 'k.-', label='Filtered Data')
+            # Plot the removed points, using their original values from distances.
+            if removed_indices:
+                removed_times = df['timestamp'].iloc[removed_indices]
+                removed_vals = distances.iloc[removed_indices]
+                plt.plot(removed_times, removed_vals, 'rx', markersize=5, label='Removed Data')
+            plt.title(f"{column} - Removed Small Groups (threshold = {threshold})")
+            plt.xlabel("Timestamp")
+            plt.ylabel(column)
+            plt.legend()
+            plt.show()
+
 
     return df
 
@@ -762,7 +780,7 @@ def distanceCorrection(df):
     for column in df.columns:
         if not column.startswith('b'):
             continue
-        df[column] = df[column]-0.5
+        df[column] = df[column]-0.8
     return df
 
 def processData(filename, tests):
@@ -788,12 +806,15 @@ def processData(filename, tests):
     dfs = [initalDf]
 
     # Run Tests on DF
+    i=0
     for testname, test in tests:
         df = dfs[-1]
         resultingDF = test(df)
         print(f"Test {testname} complete")
+        resultingDF.to_csv(f"processed{testname}{i}.csv", index=False)            
         # Append the resulting DF to the list of data
         dfs.append(resultingDF)
+        i+=1
 
     # Save all the DFS
     final = []
@@ -988,7 +1009,8 @@ def plotPlayers(data, beacons, plot=True):
     # finalPlayerPositions['y4'] = [pos[1] for pos in player_positions4]
 
     finalPlayerPositions['confidence'] = find_confidence(finalPlayerPositions, beacons)
-    finalPlayerPositions.to_csv(f'player_positions_{title}.csv', index=False)
+    if title == "Ground Truth":
+        finalPlayerPositions.to_csv(f'player_positions_{title}.csv', index=False)
 
 
     player_positions = np.array(player_positions)
@@ -1007,12 +1029,12 @@ def plotPlayers(data, beacons, plot=True):
     # print("ave: ", np.mean(df["confidence"]))
     # print("std: ", np.std(df["confidence"]))
     if title != "Ground Truth":
-        dfk = pipelineKalman_2d(df, beacons)
+        df = pipelineKalman_2d(df, beacons)
         #dfave = pipelineKalman_2d(finalPlayerPositions, beacons)
+        df.to_csv(f'player_positions_{title}.csv', index=False)
 
     #kalman_positions = df[['pos_x', 'pos_y']].to_numpy()
     #corrected_positions = np.array(twoD_correction(kalman_positions.copy(), timestamps, 0))
-
     # Plot player positions
     plt.figure(figsize=(10, 6))
     for i in range(len(player_positions1)):
@@ -1028,7 +1050,7 @@ def plotPlayers(data, beacons, plot=True):
     #plt.plot(df['pos_x'], df['pos_y'], '.-', alpha=alpha)
 
     if title != "Ground Truth":
-        plt.plot(dfk['pos_x'], dfk['pos_y'], '.-', label='kalman and ave cluster')
+        plt.plot(df['pos_x'], df['pos_y'], '.-', label='player trace')
         #plt.plot(dfave['pos_x'], dfave['pos_y'], '.-', color='orange', label='kalman and ave trilat')
     else:
         plt.plot(player_positions[:,0], player_positions[:,1], '.-', alpha=alpha, color='blue') # plot the avg last
@@ -1065,11 +1087,12 @@ def main():
     # ("Outlier Removal", removeOutliers) #this is the right one
     # ("Outlier Removal", removeOutliers_dp)
     # ("Outlier Removal", removeOutliers_ts)
+    # ("Velocity Clamping", velocityClamping)
     # ("Plot", plotPlayers)
-    tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers_ts), ("Velocity Clamping", velocityClamping), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
+    tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers_ts), ("Velocity Clamping", velocityClamping), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
     #tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping)]
-    filenames = ["feb23/t1-aroundsquare.csv"]
-    gt_filename = "feb23/t1-aroundsquare-groundtruth.csv"
+    filenames = ["OverTheHeadTest.csv"]
+    gt_filename = "GT-overheadtest-UWB-feb5.csv"
     # show  plots or not?
     show_plots = False
     # output doc as pdf?
@@ -1100,18 +1123,18 @@ def main():
             absError(gt, df[1], title=df[0], plot=show_plots)
             i += 1
 
-        """#TEMPORARY CODE TO SAVE A USEFUL CSV FOR TRILATERATION TESTING
-        i=0
-        for df in dfs:
-            df[1].to_csv(f"processedtest{i}.csv", index=False)
-            i+=1 """
+        #TEMPORARY CODE TO SAVE A USEFUL CSV FOR TRILATERATION TESTING
+        # i=0
+        # for df in dfs:
+        #     df[1].to_csv(f"processedtest{df[0]}.csv", index=False)
+        #     i+=1
 
         # Plot GT 2d Data
         # beaconPositions = np.array([[20, 0], [0, 0], [0, 40], [20, 40]])
         #beaconPositions = np.array([[15, 0], [15, 20], [0, 0], [0, 20]])
         #beaconPositions = np.array([[0, 0], [15, 0], [0, 20], [15, 20]])
-        #beaconPositions = np.array([[0, 0], [12, 0], [0, 18], [12, 18]])
-        beaconPositions = np.array([[0, 0], [28.7, 0], [28.7, 25.7], [0, 25.7]])  
+        beaconPositions = np.array([[0, 0], [12, 0], [0, 18], [12, 18]])
+        #beaconPositions = np.array([[0, 0], [28.7, 0], [28.7, 25.7], [0, 25.7]])  
         imgPath = plotPlayers(("Ground Truth", gt), beaconPositions, plot=False)
         add_section(doc, sectionName="Ground Truth", sectionText="", imgPath=imgPath, caption="Ground Truth Player Movement Path")
 
