@@ -1,22 +1,20 @@
 /* Based on Wi-Fi FTM Initiator Arduino Example
  *
- *   This example code is in the Public Domain (or CC0 licensed, at your option.)
- *
- *   Unless required by applicable law or agreed to in writing, this
- *   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
- *   CONDITIONS OF ANY KIND, either express or implied.
+ *   This code is to be flashed on one of our wearable devices, which is made up of 
+ *   a xiao esp32s3 and a ADXL345 accelerometer. Note that if the accelerometer is 
+ *   disconnected, or otherwise nonfunctional, you may experience unpredictable 
+ *   behavior
+ * 
+ *   NOTE: ensure that you change the MAC address of the recorder beacon
  */
 #include "WiFi.h"
 #include <esp_now.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
+#include <Adafruit_Sensor.h> //should be installed as a dependency for the ADXL345 library
 #include <Adafruit_ADXL345_U.h>
 #include "dataStructures.h"
 
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);  // ensure board target is set to xiao_esp32s3, or else the I2C pins may be incorrect
-/*
- *   THIS FEATURE IS SUPPORTED ONLY BY ESP32-S2 AND ESP32-C3
- */
 
 // Beacon number and names -- assumes no password to connect
 int numBeacons = 4;
@@ -41,7 +39,7 @@ int connectTimeOut = 150;  //time in ms that we will try connecting for.
 BeaconData curValues;
 Message curMessage;
 
-const uint8_t broadcastAddress[] = { 0x64, 0xE8, 0x33, 0x50, 0xC3, 0xf8 };
+const uint8_t broadcastAddress[] = { 0x64, 0xE8, 0x33, 0x50, 0xC3, 0xf8 }; //TODO: CHANGE THIS to the address of your recorder beacon!
 
 esp_now_peer_info_t peerInfo;
 
@@ -60,21 +58,15 @@ void onFtmReport(arduino_event_t *event) {
   // Set the global report status
   ftmSuccess = report->status == FTM_STATUS_SUCCESS;
   if (ftmSuccess) {
-    // The estimated distance in meters may vary depending on some factors (see README file)
     // Serial.printf("[%.2f,%lu,%d]", (float)report->dist_est / 100.0, report->rtt_est,WiFi.RSSI());
     curValues.FTMdist = report->dist_est;
     curValues.rssi = WiFi.RSSI();
-    // Pointer to FTM Report with multiple entries, should be freed after use
     free(report->ftm_report_data);
     WiFi.disconnect();  //TODO: evaluate importance of these disconnect calls within callback; don't think they're necessary
-                        // received = true;
   } else {
-    // Serial.print("[FTMErr");
-    // Serial.print(status_str[report->status]);
-    // Serial.print(']');
     WiFi.disconnect(); 
   }
-  // Signal that report is `ed
+  // Signal that report is received
   xSemaphoreGive(ftmSemaphore);
 }
 
@@ -101,7 +93,8 @@ void setup() {
   WiFi.onEvent(onFtmReport, ARDUINO_EVENT_WIFI_FTM_REPORT);
 
   if (esp_now_init() != ESP_OK) {
-    Serial.println("Error initializing ESP-NOW");
+    // Debug
+    // Serial.println("Error initializing ESP-NOW");
     return;
   }
   esp_now_register_send_cb(OnDataSent);
@@ -129,26 +122,19 @@ void loop() {
     curMessage.yaccel = (int16_t)(event.acceleration.y * 100);
     curMessage.zaccel = (int16_t)(event.acceleration.z * 100);
     WiFi.begin(beacons[i], NULL);
-    while ((WiFi.status() != WL_CONNECTED) && (millis() - startConnectTime) < connectTimeOut) {  // wait is this wrong?
+    while ((WiFi.status() != WL_CONNECTED) && (millis() - startConnectTime) < connectTimeOut) {
       delay(10);
     }
     if (WiFi.status() == WL_CONNECTED) {
       getFtmReport();
-      // curValues.timestamp = millis();
-
       //Now, we update our message. Specifically, we update the data corresponding to the beacon.
-      curMessage.CollectedBeaconData[i].FTMdist = curValues.FTMdist;
+      curMessage.CollectedBeaconData[i].dist = curValues.dist;
       WiFi.disconnect();
     } else {
       WiFi.disconnect();
     }
   }
-  curMessage.timestamp = millis();
-  // Output for debugging:
-  // Serial.printf("%lu,%d,%d,%d,%d,%d,%d,%d",curMessage.timestamp,curMessage.CollectedBeaconData[0].FTMdist,curMessage.CollectedBeaconData[1].FTMdist,curMessage.CollectedBeaconData[2].FTMdist,curMessage.CollectedBeaconData[3].FTMdist,
-  //                 curMessage.xaccel,curMessage.yaccel,curMessage.zaccel); //note: currently, not reporting RSSI, but this could be added in the future
-  //   Serial.println();
-  
+  curMessage.timestamp = millis();  
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&curMessage, sizeof(curMessage));  // sending our message to the recorder beacon via espnow
   delay(30);
   result = esp_now_send(broadcastAddress, (uint8_t *)&curMessage, sizeof(curMessage));  // redundancy message. won't actually be printed, as only novel timestamps are printed
