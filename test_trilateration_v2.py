@@ -2,6 +2,15 @@ import numpy as np
 import itertools
 from sklearn.cluster import KMeans
 
+"""CAN BE DELETED"""
+
+"""
+This file aims to go from distance measurements to position coordinates. The algorithm searches for clusters
+of circle intersections, find their centroids, then take a weighted average based on the cluster spread
+to find the final coordinate.
+This method is not in use because it is essentially a bad way to find a coordinate. 
+"""
+
 def circle_intersections(p1, r1, p2, r2):
     """Finds intersection points between two circles."""
     d = np.linalg.norm(p2 - p1)

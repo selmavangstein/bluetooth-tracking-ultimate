@@ -1,5 +1,12 @@
 import numpy as np
 
+"""File to process acceleration data. 
+Finding the acceleration vector relative to the beacons is hard,
+and depends on the current position coordinate, so we dropped this idea.
+We now only work with acceleration magnitudes.
+We still recommend working with the acceleration vector relative to north, and use this in a
+2D Kalman Filter that takes both position and acceleration measurements (not currently implemented)"""
+
 def find_beacon_acceleration(acceleration_data, compass_angle):
     '''
     DOES NOT CURRENTLY WORK. NEEDS A WHOLE LOT OF WORK.
@@ -37,11 +44,20 @@ def find_beacon_acceleration(acceleration_data, compass_angle):
 
 
 def find_acceleration_magnitude(df):
+    """Find the acceleration magnitude at each time stamp.
+    Args:
+        df: contains acceleration data. Must contain the headers 'xa', 'ya', 'za'
+    Returns:
+        df: a copy of df with a new column 'ta' giving the total acceleration magnitude
+    """
     df = df.copy()
     xa = df['xa']
     ya = df['ya']
     za = df['za']
+    #note that we here subtract the acceleration due to gravity. This might not always be pointing in the y-direction.
+    #If the down-direction is roughly constant throughout the test, this approach works, but if down is x,y, or z might vary
+    #between setups
+    #If the down-direction changes (like if the player dives or decides to do a backflip) this approximation will not be accurate
     acceleration_magnitudes = np.sqrt(xa**2 + (ya-9.8)**2 + za**2)
-     #subtract downwards accel. Assuming g is always straight down. This is not the case though - need some low pass filter
     df['ta'] = acceleration_magnitudes
     return df

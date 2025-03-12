@@ -3,35 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from kalman_filter_pos_vel_acc import pipelineKalman
 
-
-def distanceCorrection(df):
-    """
-    Corrects the distance data in the dataframe using the data from the compass
-    If the player moves more than 10m away from the beacon in a second then the data is incorrect and should be corrected
-    """
-    df = df.copy()  
-
-    for column in df.columns:
-        if not column.startswith('b'):
-            continue
-
-        # Calculate the difference between consecutive measurements
-        df[f'{column}_diff'] = df[column].diff().abs()
-
-        # Identify the outliers where the difference is greater than 10 meters
-        outliers = df[f'{column}_diff'] > 9
-
-        # Replace outliers with NaN
-        df.loc[outliers, column] = np.nan
-
-        # Interpolate to fill NaN values
-        df[column].interpolate(method='linear', inplace=True)
-
-        # Drop the temporary diff column
-        df.drop(columns=[f'{column}_diff'], inplace=True)
-
-    return df
-
+"""A selection of functions to test for data characteristics.
+Is useful in tuning the Kalman filter.
+"""
 
 def testing_variance(df):
     print("TESTING VARIANCE")
@@ -82,11 +56,6 @@ def systematic_error(df):
 
 def residual_stats(df):
     print("COMPUTING STATISTICS ON RESIDUALS")
-    # Suppose stationary_residuals is a 1D numpy array containing your residuals.
-    # For demonstration, let's simulate some residuals (replace this with your data):
-    # stationary_residuals = np.array([...])
-    # For now, we'll simulate some data:
-
     processed_df, savers = pipelineKalman(df)
     for saver in savers:
         stationary_residuals = saver.y
@@ -111,49 +80,6 @@ def residual_stats(df):
         plt.ylabel("Frequency")
         plt.legend()
         plt.show()
-
-def velocity(df):
-    diff1 = df['b1d'].diff()
-    diff2 = df['b2d'].diff()
-    diff3 = df['b3d'].diff()
-    diff4 = df['b4d'].diff()
-
-    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%H:%M:%S.%f')
-    dt = df['timestamp'].diff().dt.total_seconds()
-
-    v1 = diff1/dt
-    v2 = diff2/dt
-    v3 = diff3/dt
-    v4 = diff4/dt
-
-    """ plt.figure()
-    plt.plot(df['timestamp'], v1)
-    plt.plot(df['timestamp'], v2)
-    plt.plot(df['timestamp'], v3)
-    plt.plot(df['timestamp'], v4)
-    plt.ylim(-30,30)
-    plt.show() """
-
-    df = distanceCorrection(df)
-    diff1 = df['b1d'].diff()
-    diff2 = df['b2d'].diff()
-    diff3 = df['b3d'].diff()
-    diff4 = df['b4d'].diff()
-
-    dt = df['timestamp'].diff().dt.total_seconds()
-
-    v1p = diff1/dt
-    v2p = diff2/dt
-    v3p = diff3/dt
-    v4p = diff4/dt
-
-    plt.figure()
-    plt.plot(df['timestamp'], v1-v1p)
-    plt.plot(df['timestamp'], v2-v2p)
-    plt.plot(df['timestamp'], v3-v3p)
-    plt.plot(df['timestamp'], v4-v4p)
-    plt.ylim(-30,30)
-    plt.show()
 
 
 def average_absolute_error(df, gt):

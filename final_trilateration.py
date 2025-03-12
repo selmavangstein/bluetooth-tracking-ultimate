@@ -5,6 +5,12 @@ from collections import defaultdict
 from matplotlib import pyplot as plt
 from sklearn.cluster import DBSCAN
 
+"""
+This file contains the coordinate estimation algorithm.
+Its purpose is to go from a set of distance measurements to a set of coordinates representing position on the field.
+Instead of trilateration, we utilize a clustering algorithm that identifies the densest cluster of circle intersections,
+and uses its centroid as the final coordinate. This utilizes the data redundancy we have from four beacons.
+"""
 
 def circle_intersections(p1, r1, p2, r2):
     """

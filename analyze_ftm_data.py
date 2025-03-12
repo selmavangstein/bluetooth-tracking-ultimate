@@ -109,12 +109,12 @@ def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, tit
             'k.-', label=f"Measured Dist{anchor_id}"
         )
         # Plot merged measured from df_merged
-        meas_col_merged = c + "_y"
-        if meas_col_merged in df_merged.columns:
-            ax.plot(
-                df_merged['timestamp'], df_merged[meas_col_merged],
-                'gx', label=f"Merged Dist{anchor_id}"
-            )
+        # meas_col_merged = c + "_y"
+        # if meas_col_merged in df_merged.columns:
+        #     ax.plot(
+        #         df_merged['timestamp'], df_merged[meas_col_merged],
+        #         'gx', label=f"Merged Dist{anchor_id}"
+        #     )
 
         ax.set_title(f"Anchor {anchor_id} - Measured vs GT")
         ax.set_ylabel("Distance (m)")

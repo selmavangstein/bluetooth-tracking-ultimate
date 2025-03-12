@@ -3,15 +3,27 @@ from filterpy.common import Saver
 import numpy as np
 from filterpy.kalman import KalmanFilter
 import pandas as pd
-from residualcheck import residualcheck
-import matplotlib.pyplot as plt
 from collections import deque
-
 from acceleration_vector import find_acceleration_magnitude
 
-def pos_vel_filter(x, P, R, Q=0., dt=1.):
-    """ Returns a KalmanFilter which implements a
-    constant velocity model for a state [x dx].T
+"""This file implements a Kalman filter. The position state is the only needed measurement, 
+velocity and acceleration are hidden variables. 
+pipelineKalman is the function that is used to apply the filter to the distance measurements from tests.
+We ended up not using this filter as it did nothing we could not do with other algorithms, but we believe
+this can be helpful in the future with better tuning, more complex modelling, or another measured variable."""
+
+def pos_vel_acc_filter(x, P, R, Q=0., dt=1.):
+    """ Initializes a Kalman filter with position as measured variable and velocity and accceleration as
+    hidden variables.
+    Uses a standard kinematic model with constant acceleration.
+    Args:
+        x: Initial state
+        P: Initial state uncertainty
+        R: Measurement uncertainty
+        Q: Process noise variance
+        dt: Time difference between each data point
+    Returns:
+        kf: A Kalman filter with the given controls
     """
 
     kf = KalmanFilter(dim_x=3, dim_z=1)
@@ -21,9 +33,9 @@ def pos_vel_filter(x, P, R, Q=0., dt=1.):
                      [0., 0., 1]])  #transition matrix
     kf.H = np.array([[1., 0, 0.]])    #Measurement function
     if np.isscalar(R):
-        kf.R *= R                 # covariance matrix 
+        kf.R *= R                 #covariance matrix 
     else:
-        kf.R[:] = R                     # measurement uncertainty
+        kf.R[:] = R                     #measurement uncertainty
     if np.isscalar(P):
         kf.P *= P                 #initial covariance matrix 
     else:
@@ -35,22 +47,30 @@ def pos_vel_filter(x, P, R, Q=0., dt=1.):
     return kf
 
 def kalman_filter(zs, ta, times, smoothing=True):
-    '''Takes measurements and timestamps (must be on datetime format). Returns filtered data'''
+    '''Applies a Kalman filter to the given data.
+    Args:
+        zs: Measurement to filter
+        ta: Acceleration magnitude
+        times: list of timestamps
+        smoothing: Boolean to apply RTS smoothing.
+    Returns:
+        s: saver object storing the state history of the filter, including filtered distances
+ '''
 
     times = pd.to_datetime(times, format='%H:%M:%S.%f')
     time_differences = times.diff()
     average_difference = time_differences.dt.total_seconds().mean()
     dt = average_difference
 
+    #set up filter matrices. It is important to tune these to the specific use case
     x = np.array([zs[0], 0, 0]) #initial state.
     P = np.diag([.2, 9., 5.]) #initial state uncertainty 
     Q = Q_discrete_white_noise(dim=3, dt=dt, var=20*dt) #process noise.
     R = np.array([[0.2]]) #measurement covariance matrix /sensor variance.
 
-    f = pos_vel_filter(x, P, R, Q, dt) 
+    #initialize filter
+    f = pos_vel_acc_filter(x, P, R, Q, dt) 
     s = Saver(f)
-
-    #setting parameters for extra controls within the filter
 
     #gating parameters
     gating_threshold = 3 #how many std devs to consider an outlier
@@ -64,16 +84,13 @@ def kalman_filter(zs, ta, times, smoothing=True):
     residual_window = deque([], maxlen=window_size)
     variance_threshold = 2.0  # tune this based on typical residual variance - FIND THIS
 
-    #EWMA params
-    alpha = 0.2 #some variable used to control how reactive the R-update is
-    rolling_variance = R.copy()
-
     #some counts for testing purposes
     delta_pos_too_high = 0
     acc_too_high = 0
     stdev_too_high = 0
     residual_var_too_high = 0
 
+    #main filter cycle
     for i in range(len(zs)):
         f.predict()
         z = zs[i]
@@ -84,9 +101,9 @@ def kalman_filter(zs, ta, times, smoothing=True):
             acc_too_high += 1  
             f.x[2] = np.sign(f.x[2]) * ta[i]
 
+        #handle nan-values
         if np.isnan(z):
             z=f.x[0]
-            #f.update(z)
             s.save()
             s.x[-1][0] = np.nan
             s.x[-1][1] = np.nan
@@ -104,14 +121,14 @@ def kalman_filter(zs, ta, times, smoothing=True):
             f.R = R_original * R_inflated
             inflation_steps_countdown = inflation_steps
         else:
-            # If not an outlier, check if we are still in "inflated" mode
+            #If not an outlier, check if we are still in "inflated" mode
             if inflation_steps_countdown > 0:
                 inflation_steps_countdown -= 1
                 if inflation_steps_countdown == 0:
                     # revert to normal R
                     f.R = R_original
             else:
-                # normal operation
+                #normal operation
                 f.R = R_original
 
         f.update(z)
@@ -124,10 +141,8 @@ def kalman_filter(zs, ta, times, smoothing=True):
             var_estimate = np.var(residual_window)
             if var_estimate > variance_threshold:
                 residual_var_too_high += 1
-                # Another way to handle bursts of noise: inflate R
                 f.R = R_original * R_inflated
                 inflation_steps_countdown = inflation_steps
-
 
     print(f"Acceleration clamped: {acc_too_high}")
     print(f"Position change clamped: {delta_pos_too_high}")
@@ -141,30 +156,32 @@ def kalman_filter(zs, ta, times, smoothing=True):
     if smoothing:
         smooth_xs, smooth_cov, _, _ = f.rts_smoother(xs, covs)
 
-    #residualcheck(s, R)
-
     #this returns a saver object with all the information about the filter
     return s, smooth_xs
 
+
 def pipelineKalman(df):
+    """Applies a Kalman filter to a one dimensional measurement (distances in our usecase)
+    Args:
+        df: dataframe containing timestamps, distance measurements, acceleration data
+    Returns:
+        df: a copy of df with filtered distances, and a new column 'ta' containing acceleration magnitudes
+    """
+
     df = df.copy()  
     df = find_acceleration_magnitude(df) # adds acceleration vectors to the df
 
+    #filter each distance column
     results = {}
-    #savers = []
     for column in df.columns:
         if column.startswith('b'):
             zs = df[column].values
             s, smooth_xs = kalman_filter(zs, df['ta'].values, df['timestamp'], smoothing=True)
-            #savers.append(s)
             xs = s.x
             results[column] = xs[:, 0]  # store the position estimates
-
 
     # Add the results to the dataframe, replacing the original data
     for column, values in results.items():
         df[column] = values
 
     return df
-    #return df, savers
-

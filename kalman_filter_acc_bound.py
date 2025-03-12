@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 
 from acceleration_vector import find_acceleration_magnitude
 
+"""THIS FILE CAN BE DELETED"""
+
 def pos_vel_filter(x, P, R, Q=0., dt=1.):
     """ Returns a KalmanFilter which implements a
     constant velocity model for a state [x dx].T

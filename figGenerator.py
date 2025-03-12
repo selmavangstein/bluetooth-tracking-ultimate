@@ -2,6 +2,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 
+"""File to plot the data and the ground truth"""
+
 df = pd.read_csv('player_positions_Velocity Clamping4.csv')
 gt = pd.read_csv('data/GT-obstacletest2.csv')
 beacons = np.array([[0, 0], [12, 0], [0, 18], [12, 18]])
