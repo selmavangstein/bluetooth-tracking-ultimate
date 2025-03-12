@@ -172,7 +172,7 @@ def find_best_intersections2(beacons, distances):
 
     # Convert to NumPy array
     all_intersections = np.array(all_intersections) # Apply DBSCAN
-    eps = 2  # Maximum distance between points in a cluster
+    eps = 0.2  # Maximum distance between points in a cluster
     eps_max = 60
     min_samples = 2  # Minimum points to form a cluster
 
@@ -203,17 +203,26 @@ def find_best_intersections2(beacons, distances):
                 estimated_position = np.array([None, None])
                 labels[labels == best_cluster_label] = -1
                 valid_clusters = labels[labels != -1]
-                eps +=2
+                if eps<2:
+                    eps+=0.2
+                else:
+                    eps +=1
 
             elif estimated_position[1] < y_min-2 or estimated_position[1] > y_max+2:
                 #print("position out of bounds, finding a new one")
                 estimated_position = np.array([None, None])
                 labels[labels == best_cluster_label] = -1
                 valid_clusters = labels[labels != -1]
-                eps +=2
+                if eps<2:
+                    eps+=0.2
+                else:
+                    eps +=1
         else:
-            eps +=2
-            #print("increased eps, retrying")
+            if eps<2:
+                eps+=0.2
+            else:
+                eps +=1
+            #print("no clusters found, retrying")
 
 
     residuals = []
@@ -310,9 +319,6 @@ def trilaterate(df, beacon_positions):
             pos_x.append(final_position[0])
             pos_y.append(final_position[1])
             confidence_list.append(confidence)
-
-            # for beacon_idx in best_beacons:
-            #     beacon_usage_count[beacon_idx] += 1
             
             #plot_results(beacon_positions, distances, all_intersections, best_intersections, final_position)
 
