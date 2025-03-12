@@ -37,7 +37,7 @@ def pos_vel_filter_2d(x, P, R, Q=0., dt=1.):
 
     return kf
 
-def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoothing=True):
+def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoothing=True, ani=False):
     '''Takes x, y measurements and timestamps. Returns filtered data.'''
 
     times = pd.to_datetime(times, format='%H:%M:%S.%f')
@@ -54,24 +54,29 @@ def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoot
     Q = Q_discrete_white_noise(dim=3, dt=dt, var=200*dt, block_size=2)  # Process noise
     R = np.eye(2) * 0.8  # Measurement noise
 
-    max_vel = 11
-
     f = pos_vel_filter_2d(x, P, R, Q, dt)
     s = Saver(f)
 
     impossible_circle_counter = 0
     inflated_R_counter = 0
+
+    measurements = []
+    pred_states = []
+    filt_states = []
     for i in range(len(zs_x)):
         prev_coord = f.x[0:2]
         f.predict()
+        pred_states.append(f.x.copy())
 
         # Clamp estimated acceleration
         estimated_acc = np.linalg.norm(f.x[4:6])  # Magnitude of (ax, ay)
         if estimated_acc > ta[i]:
             f.x[4:6] *= ta[i] / estimated_acc
 
+        #clamp dx/dt
         meas = np.array([zs_x[i], zs_y[i]])
-
+        measurements.append(meas.copy())
+        max_vel = 11
         if i > 0:
             predicted_change = np.linalg.norm(meas - prev_coord)
             predicted_velocity = predicted_change/dt
@@ -81,6 +86,7 @@ def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoot
                 direction = (meas - prev_coord) / predicted_change
                 meas = prev_coord + max_change * direction
 
+        #clamp velocity prediction
         speed = np.linalg.norm(f.x[2:4])
         if speed > max_vel:
             f.x[2:4] *= max_vel / speed
@@ -105,11 +111,11 @@ def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoot
 
         # Update filter with new measurement
         f.update(meas)
-        s.save()
+        filt_states.append(f.x.copy())
 
-        #fix this hardcoding
         f.x[0] = np.clip(f.x[0], x_min-2, x_max+2)
         f.x[1] = np.clip(f.x[1], y_min-2, y_max+2)
+        s.save()
 
     s.to_array()
     xs = s.x
@@ -121,6 +127,10 @@ def kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoot
 
     print("Points corrected by impossible circle: ", impossible_circle_counter)
     print("inflated R's: ", inflated_R_counter)
+
+    if ani:
+        animateKalman(pred_states, measurements, filt_states, smooth_xs, x_min, x_max, y_min, y_max)
+
     return s, smooth_xs
 
 def pipelineKalman_2d(df, beacon_pos, ave=True):
@@ -133,7 +143,7 @@ def pipelineKalman_2d(df, beacon_pos, ave=True):
     times = df['timestamp']
     confidence_factor = df['confidence']
 
-    s, smooth_xs = kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoothing=True)
+    s, smooth_xs,  = kalman_filter_2d(zs_x, zs_y, ta, times, confidence_factor, beacon_pos, smoothing=True, ani=False)
 
     # df['pos_x'] = s.x[:, 0]
     # df['pos_y'] = s.x[:, 1]
@@ -141,3 +151,72 @@ def pipelineKalman_2d(df, beacon_pos, ave=True):
     df['pos_y'] = smooth_xs[:, 1]
 
     return df
+
+    
+def animateKalman(pred_states, measurements, filt_states, smooth_states, x_min, x_max, y_min, y_max):
+        import matplotlib.pyplot as plt
+        import matplotlib.animation as animation
+
+        # Convert lists to numpy arrays for easier slicing.
+        measurements = np.array(measurements)
+        pred_states = np.array(pred_states)
+        filt_states = np.array(filt_states)
+        smooth_states = np.array(smooth_states)
+
+        # Set up the figure.
+        gt = pd.read_csv('data/GT-obstacletest2.csv')
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.set_xlim(0, 12)
+        ax.set_ylim(3, 16)
+        plt.xticks([3,6,9])
+        plt.yticks([6,12])
+        plt.gca().set_aspect('equal', adjustable='datalim')
+        plt.plot(gt['locx'], gt['locy'], '-', color='grey', label='Ground Truth')
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_title("Kalman 2D Filter Animation")
+
+        # Create artists for measurement, prediction, filtered state, and trajectory.
+        measurement_point, = ax.plot([], [], 'rx', markersize=10, label="Measurement")
+        prediction_point, = ax.plot([], [], 'bo', markersize=8, label="Prediction")
+        filtered_point, = ax.plot([], [], '^', color='orange', markersize=8, label="Filtered")
+        smooth_point, = ax.plot([], [], 'gP', markersize=8, label="Smoothed")
+        trajectory_line, = ax.plot([], [], 'g-', linewidth=1, label="Trajectory")
+
+        ax.legend()
+
+        def init():
+            measurement_point.set_data([], [])
+            prediction_point.set_data([], [])
+            filtered_point.set_data([], [])
+            smooth_point.set_data([], [])
+            trajectory_line.set_data([], [])
+            return measurement_point, prediction_point, filtered_point, smooth_point, trajectory_line
+
+        def update(frame):
+            # frame is the time step index.
+            meas = measurements[frame]
+            pred = pred_states[frame]
+            filt = filt_states[frame]
+            smooth = smooth_states[frame]
+            
+            # Wrap coordinates in a list so that set_data gets a sequence.
+            measurement_point.set_data([meas[0]], [meas[1]])
+            prediction_point.set_data([pred[0]], [pred[1]])
+            filtered_point.set_data([filt[0]], [filt[1]])
+            smooth_point.set_data([smooth[0]], [smooth[1]])
+            
+            # For trajectory, plot all filtered positions up to current frame.
+            traj = smooth_states[:frame+1]
+            trajectory_line.set_data(traj[:, 0], traj[:, 1])
+            
+            ax.set_title(f"Kalman 2D Filter - Step {frame}")
+            return measurement_point, prediction_point, filtered_point, smooth_point, trajectory_line
+
+
+        # Create the animation.
+        anim = animation.FuncAnimation(fig, update, frames=len(measurements),
+                                    init_func=init, blit=True, interval=80)
+        anim.save('kalman_animation.gif', writer='pillow', fps=30)
+
+        #plt.show()
