@@ -3,7 +3,12 @@ import os
 from matplotlib import pyplot as plt
 import numpy as np
 
+"""This file calculates and plots the absolute error for each beacon over time.
+Also plots the mean of the absolute errors of the four beacons over time.
+Plots saved in "charts" folder."""
+
 def interpolate_groundtruth(groundtruth, measurement_timestamps):
+    """" Returns ground truth with interpolated data points aligned with measurement timestamps"""
 
     groundtruth['timestamp'] = pd.to_datetime(groundtruth['timestamp'], format="%H:%M:%S.%f")
     measurement_timestamps = pd.to_datetime(measurement_timestamps, format="%H:%M:%S.%f")
@@ -15,6 +20,7 @@ def interpolate_groundtruth(groundtruth, measurement_timestamps):
     return groundtruth
 
 def calculate_abs_error(groundtruth, measurements):
+    """ Returns absolute error for each of the beacons at each measurement timestamp"""
     measurements['timestamp'] = pd.to_datetime(measurements['timestamp'], format="%H:%M:%S.%f")
 
     groundtruth = interpolate_groundtruth(groundtruth, measurements['timestamp'])
@@ -34,6 +40,7 @@ def calculate_abs_error(groundtruth, measurements):
     return merged, errors
 
 def plot_abs_error(timestamps, errors, title="", plot=False):
+    """ Creates a subplot for each beacon showing its absolute error at each measurement timestamp"""
     axes = plt.subplots(4,1, figsize=(10,12), sharex=True, sharey=True)[1]
 
     for i, ax in enumerate(axes,1):
@@ -48,6 +55,7 @@ def plot_abs_error(timestamps, errors, title="", plot=False):
     plt.close()
 
 def plot_mean_abs_error(timestamps, mean_abs_error, title="", plot=False):
+    """ Plots the mean of the absolute errors of the four beacons over time"""
     plt.figure(figsize=(10, 6))
     plt.plot(timestamps, mean_abs_error, label='Mean Absolute Error Across Beacons', color='green', marker='x')
     plt.title(f'Mean Absolute Error Across All Beacons Over Time ({title})')
