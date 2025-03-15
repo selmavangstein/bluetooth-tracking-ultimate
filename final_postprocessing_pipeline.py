@@ -9,7 +9,7 @@ Lets keep that naming convention for the beacon data columns so we can add as ma
 Uses a pandas df to store the data, and a matplotlib animation to animate the data
 """
 
-from analyze_ftm_data import analyze_ftm_data
+from GroundTruthPipeline import GroundTruthPipeline
 from abs_error import *
 from kalman_filter_pos_vel_acc import pipelineKalman
 from kalman_2d import pipelineKalman_2d
@@ -1169,7 +1169,7 @@ def main():
         i = 0
         for df in dfs:
             print(f"\nAnalyzing {df[0]}")
-            imgPath, text = analyze_ftm_data(df[1], gt, title=df[0], plot=show_plots)
+            imgPath, text = GroundTruthPipeline(df[1], gt, title=df[0], plot=show_plots)
             add_section(doc, sectionName=f"{df[0]} - Ground Truth Comp.", sectionText=text, imgPath=imgPath, caption=f"{df[0]} Measured vs GT Distance", imgwidth=0.7) # image width needs to be lower fo rGT so it fits on page
             absError(gt, df[1], title=df[0], plot=show_plots)
             i += 1
