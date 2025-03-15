@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 def plot_data(df_curr: pd.DataFrame, df_prev: pd.DataFrame, gt=None, title=""):
     """Plot two steps from the pipeline with ground truth on the same plot
-    Plotting methods borrowed from analyze_ftm_data"""
+    Plotting methods borrowed from GroundTruthPipeline"""
     df_curr = df_curr.copy()
 
    # For df_curr:
