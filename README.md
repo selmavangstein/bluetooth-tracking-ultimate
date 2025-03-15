@@ -8,7 +8,6 @@ We developed systems for tracking ultimate frisbee players. Our projects was cen
 
 This repo contains active, final implementations of data processing and analysis including the data pipeline and the ground truth system, in addition to Arduino and CAD files for the physical implementations. 
 
-***write some more intro about the project here***
 ## Things that should probably be in this file, or at least documented somewhere (remove things when we write them in)
 - Downloads, inputs/outputs, how to interpret results, how to make relevant changes
 - beacon positions, datafile, ground truth, which tests to use in which order, some tuning, maybe recommended order
