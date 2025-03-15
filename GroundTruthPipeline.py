@@ -1,4 +1,4 @@
-# analyze_ftm_data.py
+# GroundTruthPipeline.py
 # Final - Scale only the measured columns
 import re
 import pandas as pd
@@ -6,7 +6,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-def analyze_ftm_data(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, title=""):
+def GroundTruthPipeline(df_meas: pd.DataFrame, df_gt: pd.DataFrame, plot=False, title=""):
     """
     Analyzes measured vs. ground truth data when:
       - df_meas is in centimeters, so we scale by /100
@@ -152,6 +152,7 @@ if __name__ == "__main__":
     analyze_ftm_data(df_meas_example, df_gt_example)
 
 
+#Version that iterates over different smoothing options from the pipeline and outputs them one at a time
 
 # def main():
 #     # 1) Run the pipeline
