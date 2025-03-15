@@ -1,4 +1,4 @@
-# Abstract
+# Evaluating Methods for Radio Frequency Based Positioning of Ultimate Frisbee Players
 We developed systems for tracking ultimate frisbee players. Our projects was centered around:
 
 - Exploring different technologies
