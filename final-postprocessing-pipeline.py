@@ -9,7 +9,7 @@ Lets keep that naming convention for the beacon data columns so we can add as ma
 Uses a pandas df to store the data, and a matplotlib animation to animate the data
 """
 
-from analyze_ftm_data import analyze_ftm_data
+from GroundTruthPipeline import GroundTruthPipeline
 from abs_error import *
 from kalman_filter_pos_vel_acc import pipelineKalman
 from kalman_2d import pipelineKalman_2d
