@@ -149,7 +149,7 @@ if __name__ == "__main__":
         "b1d": [10,36.4],            # *in meters*
         "b2d": [50,11.2],            # also in meters? Then 50 would be 50.0 m
     })
-    analyze_ftm_data(df_meas_example, df_gt_example)
+    GroundTruthPipeline(df_meas_example, df_gt_example)
 
 
 #Version that iterates over different smoothing options from the pipeline and outputs them one at a time
@@ -177,6 +177,6 @@ if __name__ == "__main__":
     
 #     for title, df_meas in dfs:
 #         print(f"\nAnalyzing pipeline output '{title}' against ground truth...")
-#         df_merged = analyze_ftm_data(df_meas, df_gt)
+#         df_merged = GroundTruthPipeline(df_meas, df_gt)
 
 #     print("\nAll pipeline DataFrames processed and compared to ground truth.")
