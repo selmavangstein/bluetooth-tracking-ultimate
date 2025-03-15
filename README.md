@@ -1,5 +1,13 @@
 # bluetooth-tracking-ultimate
-We develop a bluetooth system for tracking ultimate frisbee players
+We developed systems for tracking ultimate frisbee players. Our projects was centered around:
+
+- Exploring different technologies
+- Creating and optimizing physical implementations of the best technologies (FTM and UWB), complete with beacons, mounts, and wearables
+- Process and analyze the data to make it cleaner and more accurate
+
+
+This repo contains active, final implementations of data processing and analysis including the data pipeline and the ground truth system, in addition to Arduino and CAD files for the physical implementations. 
+
 ***write some more intro about the project here***
 ## Things that should probably be in this file, or at least documented somewhere (remove things when we write them in)
 - Downloads, inputs/outputs, how to interpret results, how to make relevant changes
