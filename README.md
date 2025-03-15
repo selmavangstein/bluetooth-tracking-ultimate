@@ -1,4 +1,4 @@
-# bluetooth-tracking-ultimate
+# Abstract
 We developed systems for tracking ultimate frisbee players. Our projects was centered around:
 
 - Exploring different technologies
