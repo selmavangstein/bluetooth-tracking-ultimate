@@ -1118,7 +1118,7 @@ def main():
         i = 0
         for df in dfs:
             print(f"\nAnalyzing {df[0]}")
-            imgPath, text = analyze_ftm_data(df[1], gt, title=df[0], plot=show_plots)
+            imgPath, text = GroundTruthPipeline(df[1], gt, title=df[0], plot=show_plots)
             add_section(doc, sectionName=f"{df[0]} - Ground Truth Comp.", sectionText=text, imgPath=imgPath, caption=f"{df[0]} Measured vs GT Distance", imgwidth=0.7) # image width needs to be lower fo rGT so it fits on page
             absError(gt, df[1], title=df[0], plot=show_plots)
             i += 1
