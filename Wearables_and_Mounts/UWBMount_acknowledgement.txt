@@ -1,0 +1,5 @@
+All UWB mount models were based off this ipod mount with a tripod threading posted on thingiverse by user haasebert. 
+We made MANY changes, to the point that many are unrecognizeable from this original, but it does not change that this was the base with which we started all UWB mount models
+Thingiverse link:
+https://www.thingiverse.com/thing:25098
+I'll also include the thingiverse file for reference in this repo, with full acknowledgement
