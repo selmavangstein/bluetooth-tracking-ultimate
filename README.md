@@ -141,7 +141,8 @@ The ground truth data is then compared to the raw data and the processed data us
 The videos, Google Sheets files, raw data, and outputted ground truth can all be found in this repository. 
 
 ## Recommended Future Work
-This might be mostly covered above. Feel free to add stuff here!
+In the future, we plan to implement multi-player functionality, as the system currently supports only single-player tracking. Additionally, we aim to enhance the frontend to include live statistical analysis and track more player metrics beyond just location. We also plan to improve the data processing algorithms, potentially utilizing machine learning-based outlier detection for more thorough and effective noise removal. Furthermore, we will hope to explore alternative hardware mechanisms and improve existing ones, such as FTM and UWB.
+
 
 ## Acknowledgements
 We would like to thank our advisor Eric Alexander for all of the patience and help given to us throughout these past two terms. He has been instrumental in guiding us in completing our project. We would also like to thank Aaron Heidgerken-Greene for his assistance and help within the makerspace and constructions of our hardware. Please feel free to reach out to Eric Alexander for any questions or wants to work on this. 
