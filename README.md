@@ -39,7 +39,7 @@ This repo contains active, final implementations of data processing and analysis
 - Acknowledge eric and aaron, and tell people to reach out to eric if they want to work on this
   
 ## How to use
-Simply run `final-postprocessing-pipeline.py` on your desired output by editing the file names within main, and it will apply the processing steps one piece at a time. 
+Simply run `final-postprocessing-pipeline.py` on your desired data by editing the test file names within main, and it will apply the processing steps one piece at a time. 
 
 ## Project Structure
 
