@@ -75,7 +75,10 @@ We then added a 2D-version of the velocity clamping from above. This time, we di
 #### RTS Smoothing
 The final step is to apply RTS Smoothing. This smoothing algorithm is implemented for us by the Kalman package. It work in essentially the same way as the Kalman filter, except for the fact that it runs backwards. This means that it uses the future datapoints to predict the previous ones, balancing out the forward bias the Kalman filter introduced.
 
-
+## Ground Truth Overview
+The data processing serves to move from raw testing datafiles containing distances from player to beacons, to a cleaned and refined dataset containing player coordinates over the duration of the test. 
+The raw data generally has low noise levels and lies close to ground truth. It gets noisy whenever something is blocking the line-of-sight between player and beacon. The post processing aims to identify and handle these noisy areas to get accurate coordinate estimates.
+We now aim to walk through the steps in the pipeline. In broad strokes, we start by processing the 1D distance measurements to get rid of noise in the data. The steps in this process are applied in the order listed below, which is what we think is the best order, but the code enables a user to apply these in any order. We then use an alternative trilateration algorithm to determine player coordinates from the position measurements. Finally, we filter the coordinates.
 
 
 # Recommended future work
