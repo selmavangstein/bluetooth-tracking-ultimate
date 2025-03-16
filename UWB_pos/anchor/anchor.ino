@@ -1,6 +1,6 @@
-/*
+/* Our anchor code used for UWB ranging, based off of library example. For more details, check the readme
  *
- * For ESP32 UWB or ESP32 UWB Pro
+ * For ESP32 UWB or ESP32 UWB Pro by makerfabs
  *
  */
 
@@ -9,6 +9,7 @@
 
 
 // NOTE: anchors must have a different address. As such, ensure to uncomment a different line per beacon
+// The short address is easily accessible in the wearable.
 // #define ANCHOR_ADD "86:17:5B:D5:A9:9A:E2:9C" //Anchor 1 => thus short address = 1786
 // #define ANCHOR_ADD "22:22:AB:89:23:45:C8:A2" //Anchor 2 => thus short address = 2222
 // #define ANCHOR_ADD "97:28:6C:E6:BA:AB:F3:AD" //Anchor 3 => thus short address = 2897
@@ -35,11 +36,6 @@ void setup()
     DW1000Ranging.attachNewRange(newRange);
     DW1000Ranging.attachBlinkDevice(newBlink);
     DW1000Ranging.attachInactiveDevice(inactiveDevice);
-    //Enable the filter to smooth the distance
-    //DW1000Ranging.useRangeFilter(true);
-
-    //we start the module as an anchor
-    // DW1000Ranging.startAsAnchor("82:17:5B:D5:A9:9A:E2:9C", DW1000.MODE_LONGDATA_RANGE_ACCURACY);
 
     DW1000Ranging.startAsAnchor(ANCHOR_ADD, DW1000.MODE_LONGDATA_RANGE_LOWPOWER, false);
     // DW1000Ranging.startAsAnchor(ANCHOR_ADD, DW1000.MODE_SHORTDATA_FAST_LOWPOWER);
@@ -56,15 +52,13 @@ void loop()
 
 void newRange()
 {
-    // Serial.print("from: ");
-    // Serial.print(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
-    // Serial.print("\t Range: ");
+    Serial.print("from: ");
+    Serial.print(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
+    Serial.print("\t Range: ");
     Serial.print(DW1000Ranging.getDistantDevice()->getRange());
     Serial.print(",");
-    // Serial.print("\t RX power: ");
     Serial.print(DW1000Ranging.getDistantDevice()->getRXPower());
     Serial.println();
-    // Serial.println(" dBm");
 }
 
 void newBlink(DW1000Device *device)

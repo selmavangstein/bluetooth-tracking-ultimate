@@ -1,7 +1,7 @@
 /*
 
-For ESP32 UWB or ESP32 UWB Pro
-
+To be flashed onto makerfabs UWB (dw1000) development kits. 
+Please look at the readme for more info.
 */
 #include "WiFi.h"
 #include "datastructures.h"
@@ -17,7 +17,7 @@ For ESP32 UWB or ESP32 UWB Pro
 #define SPI_MOSI 23
 #define DW_CS 4
 
-const int SEND_FREQ = 100;
+const int SEND_FREQ = 100; //defines how often a new message is sent.
 
 // connection pins
 const uint8_t PIN_RST = 27;  // reset pin
@@ -35,21 +35,11 @@ Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 const uint8_t broadcastAddress[] = { 0xf0, 0x9e, 0x9e, 0x3b, 0xe5, 0xd8 };
 esp_now_peer_info_t peerInfo;
 
-// ---------------- DWM1000 wiring -----------------------:
-// #define SPI_SCK 8
-// #define SPI_MISO 9
-// #define SPI_MOSI 10
-// #define DW_CS 2
-// const uint8_t PIN_RST = 5;
-// const uint8_t PIN_IRQ = 3;
-// const uint8_t PIN_SS = 2;
-// - use instead of above defs if using "homemade board" -
-
 Message curData;
 u_int32_t lastSent = 0;
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  // Debug
+  // Uncomment for USB debugging
   // Serial.print("\r\nLast Packet Send Status:\t");
   // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
   return;
@@ -58,7 +48,7 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 
 void setup() {
-  curData.playerID = 'b';
+  curData.playerID = 'b'; //change this depending on which player this wearable represents. Must be char.
   Serial.begin(115200);
   delay(1000);
   // Debugging with no accel
@@ -92,7 +82,7 @@ void setup() {
   DW1000Ranging.attachNewDevice(newDevice);
   DW1000Ranging.attachInactiveDevice(inactiveDevice);
   //Set as tag
-  DW1000Ranging.startAsTag("7D:00:22:EA:82:60:3B:9C", DW1000.MODE_LONGDATA_RANGE_LOWPOWER); //tag1-potentially investigate new modes
+  DW1000Ranging.startAsTag("7D:00:22:EA:82:60:3B:9C", DW1000.MODE_LONGDATA_RANGE_LOWPOWER); //tag1
   // DW1000Ranging.startAsTag("99:99:88:88:66:11:25:32", DW1000.MODE_LONGDATA_RANGE_LOWPOWER);  //tag2
 }
 
@@ -101,7 +91,7 @@ void loop() {
   DW1000Ranging.loop();
 
   if ((millis() - lastSent) > SEND_FREQ) {
-    //   // Debug
+    //   // Uncomment to debug results over USB
     //   Serial.print(millis());
     //   Serial.print(',');
     //   Serial.print(curData.CollectedBeaconData[0].dist);
@@ -125,16 +115,11 @@ void loop() {
     curData.zaccel = (int)(event.acceleration.z * 100.0);
     curData.timestamp = millis();
     esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&curData, sizeof(curData));  // sending our message to the recorder beacon via espnow
-    // delay(30);
-    // Serial.print(result);
-    // result = esp_now_send(broadcastAddress, (uint8_t *)&curData, sizeof(curData));  // redundancy message. won't actually be printed, as only novel timestamps are printed
     lastSent = millis();
   }
-  // esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&curData, sizeof(curData));  // sending our message to the recorder beacon via espnow
 }
 
 void newRange() {
-  // Serial.println("pinged!");
   u_int16_t address = DW1000Ranging.getDistantDevice()->getShortAddress();
   switch (address) {
     case 0x1786:
