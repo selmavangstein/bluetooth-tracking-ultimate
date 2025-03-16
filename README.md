@@ -26,18 +26,11 @@ This repo contains active, final implementations of data processing and analysis
 - [Project Structure](#project-structure)
 - [Data Processing overview](#data-processing-overview)
 - [Ground Truth Overview](#ground-truth-overview)
-- [Recommended Future Work](#recommended-future-work)
+- [Wearable and Beacon Overview](#wearable-and-beacon-overview)
+- [Future Work](#future-work)
 - [Acknowledgements](#acknowledgements)
 
-## Things that should probably be in this file, or at least documented somewhere (remove things when we write them in)
-- Downloads, inputs/outputs, how to interpret results, how to make relevant changes
-- beacon positions, datafile, ground truth, which tests to use in which order, some tuning, maybe recommended order
-- should mention csv file structure, how it is updated
-- (not sure what of this fits in here vs below)
-- testing procedure, how to hook up wearables, how to get the data, how to feed it to the pipeline
-- Where data is stored, what is raw data vs final results, which tests have been done, and which file corresponds to which test
-- Acknowledge eric and aaron, and tell people to reach out to eric if they want to work on this
-  
+
 ## How to use
 Simply run `final-postprocessing-pipeline.py` on your desired data by editing the test file names within main, and it will apply the processing steps one piece at a time. 
 
@@ -45,11 +38,11 @@ Simply run `final-postprocessing-pipeline.py` on your desired data by editing th
 
 To navigate through our codebase, follow the steps below:
 
-2. **Data Creation:**
-   Using Code uploaded to a UWB or FTM module from the Arduino IDE, and boosted, powered, held, and added to (accelerometers) with our physical setup, we extract raw data files in '.log' format.
+1. **Data Creation:**
+   Using Code uploaded to a UWB or FTM module from the Arduino IDE, and boosted, powered, held, and added to (accelerometers) with our physical setup, we extract raw data files in `.log` format.
 
 2. **Data Input:**
-- We start with raw data files (in `.log` format). These files contain distance measurements from players to beacons.
+- These raw data files (in `.log` format) contain distance measurements from the player to each beacon.
 - Example files: `rawdataexample.log` (raw data) and `rawdataexample.csv` (processed data).
 - All data is stored under the `data/` folder.
 
@@ -145,7 +138,7 @@ The ground truth data is then compared to the raw data and the processed data us
 
 The videos, Google Sheets files, raw data, and outputted ground truth can all be found in this repository. 
 
-## Wearables and Beacons overview
+## Wearable and Beacon overview
 We designed many different models of wearables and beacons for FTM and UWB, designed to fill different needs, including:
 - comfort
 - convenience
@@ -154,7 +147,7 @@ We designed many different models of wearables and beacons for FTM and UWB, desi
 
 We fully created and assembled numerous models.
 
-## Recommended Future Work
+## Future Work
 In the future, we plan to implement multi-player functionality, as the system currently supports only single-player tracking. Additionally, we aim to enhance the frontend to include live statistical analysis and track more player metrics beyond just location. We also plan to improve the data processing algorithms, potentially utilizing machine learning-based outlier detection for more thorough and effective noise removal. Furthermore, we will hope to explore alternative hardware mechanisms and improve existing ones, such as FTM and UWB.
 
 
