@@ -46,7 +46,7 @@ Simply run `final-postprocessing-pipeline.py` on your desired data by editing th
 To navigate through our codebase, follow the steps below:
 
 1. **Data Input:**
-- We start with raw data files (in `.log` format). These files contain distance measurements from players to beacons.
+- We start with raw data files (that have been obtained from either FTM or UWB) (in `.log` format). These files contain distance measurements from players to beacons.
 - Example files: `rawdataexample.log` (raw data) and `rawdataexample.csv` (processed data).
 - All data is stored under the `data/` folder.
 
