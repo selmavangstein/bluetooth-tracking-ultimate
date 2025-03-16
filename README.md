@@ -45,15 +45,18 @@ Simply run `final-postprocessing-pipeline.py` on your desired data by editing th
 
 To navigate through our codebase, follow the steps below:
 
-1. **Data Input:**
-- We start with raw data files (that have been obtained from either FTM or UWB) (in `.log` format). These files contain distance measurements from players to beacons.
+2. **Data Creation:**
+   Using Code uploaded to a UWB or FTM module from the Arduino IDE, and boosted, powered, held, and added to (accelerometers) with our physical setup, we extract raw data files in '.log' format.
+
+2. **Data Input:**
+- We start with raw data files (in `.log` format). These files contain distance measurements from players to beacons.
 - Example files: `rawdataexample.log` (raw data) and `rawdataexample.csv` (processed data).
 - All data is stored under the `data/` folder.
 
-2. **Data Cleaning:**
+3. **Data Cleaning:**
 - First, we clean and convert the raw data to a CSV format for easier processing. The folder `data/` contains both ground truth data and processed data files for various days tests were conducted.
 
-3. **Post-Processing Pipeline:**
+4. **Post-Processing Pipeline:**
 - Once our data is retrieved and in our desired format, we process the data through various cleaning algorithms in this order:
     - **Distance Correction**
     - **Outlier Removal**
@@ -63,19 +66,19 @@ To navigate through our codebase, follow the steps below:
 - NOTE: More details for each algorithm above can be found undernearth [Data Processing overview](#data-processing-overview). 
 - The `final-postprocessing-pipeline.py` file contains calls to each algorithm above that are sequentially applied to our dataframe. Each step is executed one after the other, and users can rearrange the order of algorithms to fit their needs.
 
-4. **Final Processing:**
+5. **Final Processing:**
 - After cleaning, the data is used to estimate player positions using trilateration, which can be found in `final-trilateration.py`.
 - The cleaned coordinates are further refined using a Kalman filter. This is implemented in `Final-kalman.py`.
 - NOTE: More details for the Kalman filter can be found underneath [Kalman filtering ](#kalman-filtering).
 
 
-5. **Charts:**
+6. **Charts:**
 - After the data has been processed, various charts are generated to visualize the effectiveness of each post-processing step. These charts are stored in the `charts/` folder.
 - You will find:
     - Plots that show the behavior of the data before and after applying each algorithm.
     - An animation (MP4 video) under the name "streamlit" which visualizes the player’s path during the test.
 
-6. **Frontend:**
+7. **Frontend:**
 - The `frontend.py` file contains a Streamlit-based web interface where you can visualize the results and generate PDF reports from the processed data.
 
 ## Data Processing overview
