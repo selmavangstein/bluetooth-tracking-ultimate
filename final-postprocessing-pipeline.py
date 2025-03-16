@@ -255,8 +255,9 @@ def removeOutliers(df, window_size=10, residual_variance_threshold=1.5):
     df = df.loc[:, :'za']
 
     return df
+
 def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
-    """Removes outliers from a dataframe using a rolling residual variance threshold and standard deviation.
+    """Removes outliers from a dataframe using a rolling residual variance threshold and linear regression.
 
     Args:
         df (pandas df): _description_
@@ -285,8 +286,8 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
         residuals = y - fitted_line # Calculate residuals
         return np.var(residuals) # Return variance of residuals
     
-    # Replaces outliers in the window, only considering large spikes over 0.5
-    def replace_with_fit(y, window):
+    # Replaces outliers in the adjusted window, only considering large spikes over 0.5
+    def replace_with_fit2(y, window):
         if len(y) < 2:
             return y
         x = np.arange(len(y)).reshape(-1, 1)
@@ -316,7 +317,7 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
             return fitted_line1
     
     # Function that replaces with fit for the OG window if not enough inlier points are in our adjusted window
-    def replace_with(y):
+    def replace_with_og(y):
         if len(y) < 2:
             return y
         x = np.arange(len(y)).reshape(-1, 1)
@@ -341,13 +342,13 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
         if np.sum(no_outliers) >= 2:
             model2 = LinearRegression()
             model2.fit(x[no_outliers], y[no_outliers])
-            fitted_line2 = model2.predict(x) # fitted_line2 = y of model2.fit
+            fitted_line2 = model2.predict(x) 
             return fitted_line2
         else:
             return fitted_line1
         
-    # Replaces outliers in the adjusted window, now considering large spikes below 0.5 as well. 
-    def replace_fit(y):
+    # Replaces outliers in the OG window, considering both +/- spikes around 0.5. 
+    def replace_fit1(y):
         if len(y) < 2:
             return y
         x = np.arange(len(y)).reshape(-1, 1)
@@ -365,7 +366,7 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
             fitted_line2 = model2.predict(x) # fitted_line2 = y of model2.fit
             return fitted_line2
         else:
-            return replace_with(window)
+            return replace_with_og(window)
         
     # Detect obstacles based on residual variance and creates a boolean col in our df whether it is an outlier or not
     def detect_obstacles(data, residual_variance_threshold, window_time):
@@ -389,13 +390,12 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
             start_time = current_time - (pd.Timedelta(window_time) / 2)
             end_time   = current_time + (pd.Timedelta(window_time) / 2)
 
-            if df[f'{column}_obstacle_detected'].loc[start_time:end_time].any(): # if true for any value in window
+            if df[f'{column}_obstacle_detected'].loc[start_time:end_time].any():
                 window = adjusted_col_data.loc[start_time:end_time].values
-                replacement_vals = replace_with_fit(replace_fit(window), window) # replacement_vals = fitted line
+                replacement_vals = replace_with_fit2(replace_fit1(window), window) 
                 adjusted_index = adjusted_col_data.loc[start_time:end_time].index
                 adjusted_col_data.loc[adjusted_index] = replacement_vals
 
-        # df[f'{column}_adjusted'] = adjusted_col_data
         df[column] = adjusted_col_data
 
 
@@ -405,6 +405,7 @@ def removeOutliers_ts(df, window_time='800ms', residual_variance_threshold=0.5):
 
     df.to_csv(f"processedRemoveOutliers.csv", index=False)
     return df
+
 
 def velocityClamping_noplot(df):
     """
@@ -1091,8 +1092,8 @@ def main():
     # ("Plot", plotPlayers)
     tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", removeOutliers_ts), ("Velocity Clamping", velocityClamping), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
     #tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping)]
-    filenames = ["OverTheHeadTest.csv"]
-    gt_filename = "GT-overheadtest-UWB-feb5.csv"
+    filenames = ["obstacletest-uwb.csv"]
+    gt_filename = "obstacletest-groundtruth.csv"
     # show  plots or not?
     show_plots = False
     # output doc as pdf?
