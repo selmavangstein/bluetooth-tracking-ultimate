@@ -142,6 +142,15 @@ The ground truth data is then compared to the raw data and the processed data us
 
 The videos, Google Sheets files, raw data, and outputted ground truth can all be found in this repository. 
 
+## Wearables and Beacons overview
+We designed many different models of wearables and beacons for FTM and UWB, designed to fill different needs, including:
+- comfort
+- convenience
+- protection
+- minimal signal obstruction
+
+We fully created and assembled numerous models.
+
 ## Recommended Future Work
 In the future, we plan to implement multi-player functionality, as the system currently supports only single-player tracking. Additionally, we aim to enhance the frontend to include live statistical analysis and track more player metrics beyond just location. We also plan to improve the data processing algorithms, potentially utilizing machine learning-based outlier detection for more thorough and effective noise removal. Furthermore, we will hope to explore alternative hardware mechanisms and improve existing ones, such as FTM and UWB.
 
