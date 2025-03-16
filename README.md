@@ -52,6 +52,8 @@ To navigate through our codebase, follow the steps below:
 
 2. **Data Cleaning:**
 - First, we clean and convert the raw data to a CSV format for easier processing. The folder `data/` contains both ground truth data and processed data files for various days tests were conducted.
+
+3. **Post-Processing Pipeline:**
 - Once our data is retrieved and in our desired format, we process the data through various cleaning algorithms in this order:
     - **Distance Correction**
     - **Outlier Removal**
@@ -59,11 +61,10 @@ To navigate through our codebase, follow the steps below:
     - **Smoothing**
     - **Velocity Clamping**
 - NOTE: More details for each algorithm above can be found undernearth [Data Processing overview](#data-processing-overview). 
-3. **Post-Processing Pipeline:**
-- The `final-postprocessing-pipeline.py` file contains scripts that sequentially apply each algorithm. Each step is executed one after the other, and users can rearrange the order of algorithms to fit their needs.
-- After cleaning, the data is used to estimate player positions using trilateration, which can be found in `final-trilateration.py`.
+- The `final-postprocessing-pipeline.py` file contains calls to each algorithm above that are sequentially applied to our dataframe. Each step is executed one after the other, and users can rearrange the order of algorithms to fit their needs.
 
-4. **Kalman Filtering and Final Processing:**
+4. **Final Processing:**
+- After cleaning, the data is used to estimate player positions using trilateration, which can be found in `final-trilateration.py`.
 - The cleaned coordinates are further refined using a Kalman filter. This is implemented in `Final-kalman.py`.
 - NOTE: More details for the Kalman filter can be found underneath [Kalman filtering ](#kalman-filtering).
 
