@@ -15,6 +15,7 @@ This repo contains active, final implementations of data processing and analysis
 | Cullen Baker       | bakerc@gmail.com   |
 | Will Shrestha | shresthaw@carleton.edu |
 | Selma Vangstein     | vangsteins@carleton.edu |
+| Sam Diana  | dianas@carleton.edu   |
 | Marshall Johnson  | johnsonm@carleton.edu   |
 | Bemnet Abebayehu  | abebayehub@carleton.edu |
 
