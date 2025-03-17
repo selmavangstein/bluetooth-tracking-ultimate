@@ -192,8 +192,8 @@ def plotPlayers(data, beacons, plot=True):
     # print("max: ", np.max(df["confidence"]))
     # print("ave: ", np.mean(df["confidence"]))
     # print("std: ", np.std(df["confidence"]))
-    if "Ground Truth" not in title:
-        finalPlayerPositions = pipelineKalman_2d(finalPlayerPositions, beacons)
+    # if "Ground Truth" not in title:
+    #     finalPlayerPositions = pipelineKalman_2d(finalPlayerPositions, beacons)
 
     kalman_positions = finalPlayerPositions[['pos_x', 'pos_y']].to_numpy()
     corrected_positions = np.array(twoD_correction(kalman_positions.copy(), timestamps, 0))
