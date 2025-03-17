@@ -12,6 +12,34 @@ pipelineKalman is the function that is used to apply the filter to the distance 
 We ended up not using this filter as it did nothing we could not do with other algorithms, but we believe
 this can be helpful in the future with better tuning, more complex modelling, or another measured variable."""
 
+
+def find_confidence(df, beacons):
+        confidence_list = []
+        for _, row in df.iterrows():
+            estimated_position = np.array([row['pos_x'], row['pos_y']])
+            #print("pos: ", estimated_position)
+            distances = np.array([row['b1d'], row['b2d'], row['b3d'], row['b4d']])
+            residuals = []
+            #print("# of beacons: ", len(beacons))
+            for i, beacon in enumerate(beacons):
+                r_i = distances[i]
+                dist_est = np.linalg.norm(estimated_position - beacon)
+                #print("dist est: ", dist_est)
+                residuals.append((dist_est - r_i)**2)
+                #print("residual: ", (dist_est - r_i)**2)
+
+            #print("residual list: ", residuals)
+            SSE = sum(residuals)
+            #print("sse: ", SSE)
+            alpha = 0.5
+            confidence = 1.0 / (1.0 + alpha* np.sqrt(SSE))
+            #print("con: ", confidence)
+            confidence_list.append(confidence)
+
+        confidence_list = np.array(confidence_list)
+        return confidence_list
+
+
 def pos_vel_acc_filter(x, P, R, Q=0., dt=1.):
     """ Initializes a Kalman filter with position as measured variable and velocity and accceleration as
     hidden variables.
@@ -158,7 +186,6 @@ def kalman_filter(zs, ta, times, smoothing=True):
 
     #this returns a saver object with all the information about the filter
     return s, smooth_xs
-
 
 def pipelineKalman(df):
     """Applies a Kalman filter to a one dimensional measurement (distances in our usecase)

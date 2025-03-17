@@ -32,7 +32,6 @@ def circle_intersections(p1, r1, p2, r2):
 
     return [p_mid + offset, p_mid - offset]
 
-
 def find_best_intersections(beacons, distances):
     """
     Detects the densest cluster and finds its centroid. 
@@ -177,3 +176,4 @@ def trilaterate(df, beacon_positions):
     df_result['confidence'] = confidence_list
 
     return df_result
+

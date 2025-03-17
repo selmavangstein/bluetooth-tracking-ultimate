@@ -66,3 +66,16 @@ def plot_mean_abs_error(timestamps, mean_abs_error, title="", plot=False):
     plt.savefig(os.path.join(os.getcwd(), f'charts/{title}-meanabserror.png'))
     if plot: plt.show()
     plt.close()
+
+def absError(groundtruth, measurements, title, plot=False):
+    # Plots the abolsute error of the measurements compared to the ground truth
+    gt = groundtruth.copy()
+    measure = measurements.copy()
+
+    filtered_data, errors = calculate_abs_error(gt, measure)
+
+    plot_abs_error(filtered_data['timestamp'], errors, title, plot=plot)
+    plot_mean_abs_error(filtered_data['timestamp'], filtered_data['mean_abs_error'], title, plot=plot)
+    
+    return filtered_data
+
