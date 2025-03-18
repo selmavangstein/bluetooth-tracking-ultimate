@@ -28,7 +28,7 @@ from filterpy.kalman import KalmanFilter
 from report import gen_title, add_section, gen_pdf, Document
 from cleanData import clean, loadData, is_valid_row, cleanup_file, processData
 from EMA import smoothData
-from outlierFunctions import removeOutliers, removeOutliers_dp, removeOutliers_ts, pipelineRemoveOutliers
+from outlierFunctions import removeOutliers, outliersRemoved, pipelineRemoveOutliers
 from distanceCorrection import distanceCorrection
 from veloClamp import mark_velocity_outliers, velocityClamping, remove_small_groups
 from twoDCorrections import twoD_correction
@@ -293,7 +293,7 @@ def main():
     # ("Outlier Removal", removeOutliers) # this is the right one
     # ("Outlier Removal", removeOutliers_dp)
     # ("Outlier Removal", removeOutliers_ts)
-    tests = [("Distance Correction", distanceCorrection), ("Velocity Clamping", velocityClamping), ("Outlier Removal", removeOutliers), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
+    tests = [("Distance Correction", distanceCorrection), ("Outlier Removal", outliersRemoved), ("Velocity Clamping", velocityClamping), ("Kalman Filter", pipelineKalman), ("EMA", smoothData), ("Velocity Clamping", velocityClamping)]
     filenames = ["feb23/aroundsquare-uwb.csv"]
     gt_filename = "feb23/aroundsquare-groundtruth.csv"
     
